@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Hospital Roster - Clean PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @page { size: A4 landscape; margin: 5mm; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #fff; font-size: 11px; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; }
+        .header h1 { font-size: 18px; margin: 0; text-transform: uppercase; }
+        .main-controls { display: flex; justify-content: center; gap: 8px; background: #eee; padding: 10px; border: 1px solid #ccc; margin-bottom: 10px; align-items: center; }
+        .btn { border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
+        .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+        th, td { border: 1px solid #333; text-align: center; height: 32px; }
+        .row-label { background: #f9f9f9; font-weight: bold; text-align: left; padding-left: 8px; width: 140px; }
+        .sunday-col { background: #ffc0cb !important; border-left: 1.5px solid #d00 !important; border-right: 1.5px solid #d00 !important; }
+        .is-off { background-color: #ffff99 !important; } 
+        .is-double { background-color: #87CEEB !important; } 
+        .is-holiday { background-color: #90ee90 !important; } 
+        .col-tot-highlight { background: #f1c40f !important; font-weight: bold; width: 60px; font-size: 12px; }
+        .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 10px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
+        
+        /* PDF me ye cheezein nahi dikhengi */
+        .no-pdf { display: flex !important; }
+        .pdf-mode .no-pdf { display: none !important; }
+        .pdf-mode .main-controls { display: none !important; }
+
+        @media print { .main-controls, .staff-controls { display: none !important; } }
+    </style>
+</head>
+<body>
+
+<div class="main-controls">
+    <select id="yearSelect" onchange="init()"></select>
+    <select id="monthSelect" onchange="init()"></select>
+    <button class="btn btn-green" onclick="saveData()">💾 SAVE</button>
+    <button class="btn btn-pdf" onclick="downloadPDF()">📄 PDF</button>
+    <button class="btn btn-green" onclick="exportExcel()">📊 EXCEL</button>
+    <button class="btn btn-wa" onclick="shareWhatsApp()">📱 WHATSAPP</button>
+    <button class="btn btn-red" onclick="window.print()">🖨️ PRINT</button>
+</div>
+
+<div id="capture-area">
+    <div class="header">
+        <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
+        <p id="hospLoc" contenteditable="true">KAROL BAGH, NEW DELHI</p>
+        <p style="text-decoration: underline;">OPD & IPD ATTENDANCE ROSTER</p>
+    </div>
+    <div id="tablesContainer"></div>
+</div>
+
+<script>
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const daysArr = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const doubleShifts = ["M+E", "E+M", "N+M", "M+N", "E+N", "N+E"];
+    const holidayCodes = ["G/H/D", "GH", "GHD", "H"];
+
+    function populateSelectors() {
+        const yrSelect = document.getElementById('yearSelect');
+        const moSelect = document.getElementById('monthSelect');
+        const now = new Date();
+        for(let i=2024; i<=2035; i++) yrSelect.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
+        months.forEach((m, i) => moSelect.add(new Option(m, i, i === now.getMonth(), i === now.getMonth())));
+    }
+
+    function init() {
+        const year = parseInt(document.getElementById('yearSelect').value);
+        const month = parseInt(document.getElementById('monthSelect').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        document.getElementById('tablesContainer').innerHTML = `
+            ${createTableHTML("OPD REGISTRATION", "opd", daysInMonth)}
+            ${createTableHTML("IPD REGISTRATION", "ipd", daysInMonth)}
+        `;
+        renderHeaders("opd", year, month, daysInMonth);
+        renderHeaders("ipd", year, month, daysInMonth);
+        loadData(daysInMonth);
+        updateDropdowns();
+    }
+
+    function createTableHTML(title, id, days) {
+        return `
+            <div class="section-header" style="background:#2c3e50; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px;">
+                ${title}
+                <div class="staff-controls no-pdf">
+                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px;">
+                    <button class="btn btn-purple" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
+                    <select id="${id}DelSelect"><option value="">DELETE</option></select>
+                    <button class="btn btn-orange" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">DEL</button>
+                </div>
+            </div>
+            <table id="${id}Table"><thead><tr id="${id}Dates"></tr><tr id="${id}Days"></tr></thead><tbody id="${id}Body"></tbody></table>`;
+    }
+
+    function renderHeaders(id, year, month, totalDays) {
+        const dRow = document.getElementById(id + 'Dates');
+        const dyRow = document.getElementById(id + 'Days');
+        dRow.innerHTML = '<td class="row-label">DATE</td>';
+        dyRow.innerHTML = '<td class="row-label">DAY</td>';
+        for(let i=1; i<=totalDays; i++) {
+            let dayName = daysArr[new Date(year, month, i).getDay()];
+            let sunClass = (dayName === "SUN") ? 'class="sunday-col"' : '';
+            dRow.innerHTML += `<td ${sunClass}>${i}</td>`;
+            dyRow.innerHTML += `<td ${sunClass} style="font-size:9px;">${dayName}</td>`;
+        }
+        dRow.innerHTML += `<td class="col-tot-highlight">TOT</td>`;
+        dyRow.innerHTML += `<td class="col-tot-highlight" style="font-size:10px;">DUTY</td>`;
+    }
+
+    function handleLogic(input) {
+        const val = input.value.toUpperCase();
+        input.parentElement.classList.remove('is-off', 'is-double', 'is-holiday');
+        if (val === "OFF") input.parentElement.classList.add('is-off');
+        else if (doubleShifts.includes(val)) input.parentElement.classList.add('is-double');
+        else if (holidayCodes.includes(val)) input.parentElement.classList.add('is-holiday');
+
+        const row = input.closest('tr');
+        const attendanceInputs = row.querySelectorAll('.attendance-input');
+        let totalDuty = 0;
+        attendanceInputs.forEach(i => {
+            let v = i.value.toUpperCase();
+            if (doubleShifts.includes(v)) totalDuty += 2;
+            else if (["M","E","N","P","GH","GHD","G/H/D"].includes(v)) totalDuty += 1;
+        });
+        row.querySelector('.total-display').value = totalDuty;
+    }
+
+    function addStaffRow(bodyId, name, existingData = null, daysCount = 31) {
+        const body = document.getElementById(bodyId);
+        let row = document.createElement('tr');
+        let html = `<td class="row-label">${name}</td>`;
+        const year = parseInt(document.getElementById('yearSelect').value);
+        const month = parseInt(document.getElementById('monthSelect').value);
+        for(let i=1; i<=daysCount; i++) {
+            let sunClass = (daysArr[new Date(year, month, i).getDay()] === "SUN") ? 'sunday-col' : '';
+            let val = (existingData && existingData[i-1]) ? existingData[i-1] : "";
+            html += `<td class="${sunClass}"><input class="cell-edit attendance-input" type="text" value="${val}" oninput="handleLogic(this)"></td>`;
+        }
+        html += `<td class="col-tot-highlight"><input class="cell-edit total-display" type="text" readonly></td>`;
+        row.innerHTML = html;
+        body.appendChild(row);
+        row.querySelectorAll('.attendance-input').forEach(i => handleLogic(i));
+    }
+
+    function addStaff(bodyId, inputId) {
+        const name = document.getElementById(inputId).value;
+        const days = new Date(document.getElementById('yearSelect').value, parseInt(document.getElementById('monthSelect').value) + 1, 0).getDate();
+        if(name) { addStaffRow(bodyId, name.toUpperCase(), null, days); document.getElementById(inputId).value = ""; updateDropdowns(); saveData(); }
+    }
+
+    function deleteSelectedStaff(bodyId, selectId) {
+        const select = document.getElementById(selectId);
+        if(select.value !== "" && confirm("Delete staff?")) { document.getElementById(bodyId).deleteRow(select.value); updateDropdowns(); saveData(); }
+    }
+
+    function updateDropdowns() {
+        ['opdBody','ipdBody'].forEach(id => {
+            const selectId = id.replace('Body','DelSelect');
+            const select = document.getElementById(selectId);
+            if(select) {
+                select.innerHTML = '<option value="">DELETE</option>';
+                document.getElementById(id).querySelectorAll('tr').forEach((tr, i) => select.add(new Option(tr.cells[0].innerText.trim(), i)));
+            }
+        });
+    }
+
+    function downloadPDF() {
+        // PDF mode on karke controls chhupana
+        document.body.classList.add('pdf-mode');
+        const element = document.getElementById('capture-area');
+        const opt = { 
+            margin: 5, 
+            filename: 'Hospital_Roster.pdf', 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2 }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+        };
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            // PDF download ke baad wapas dikhana
+            document.body.classList.remove('pdf-mode');
+        });
+    }
+
+    function saveData() {
+        const data = { 
+            hosp: document.getElementById('hospName').innerText, loc: document.getElementById('hospLoc').innerText,
+            opd: Array.from(document.getElementById('opdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)})),
+            ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
+        };
+        localStorage.setItem('smartRosterCleanPDF', JSON.stringify(data));
+        alert("Data Saved!");
+    }
+
+    function loadData(days) {
+        const saved = localStorage.getItem('smartRosterCleanPDF');
+        if(saved) {
+            const d = JSON.parse(saved);
+            document.getElementById('hospName').innerText = d.hosp;
+            document.getElementById('hospLoc').innerText = d.loc;
+            d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
+            d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
+        } else {
+            ["RINKU", "SUSHIL", "RAJENDER", "SUNITA"].forEach(n => addStaffRow('opdBody', n, null, days));
+        }
+    }
+
+    function exportExcel() {
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("opdTable")), "OPD");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("ipdTable")), "IPD");
+        XLSX.writeFile(wb, "Hospital_Roster.xlsx");
+    }
+
+    function shareWhatsApp() {
+        let h = document.getElementById('hospName').innerText;
+        let m = months[document.getElementById('monthSelect').value];
+        let text = `*${h} REPORT - ${m}*\n\n`;
+        ['opdBody', 'ipdBody'].forEach(id => {
+            text += `*--- ${id.replace('Body','').toUpperCase()} ---*\n`;
+            document.getElementById(id).querySelectorAll('tr').forEach(tr => {
+                text += `${tr.cells[0].innerText.trim()}: ${tr.querySelector('.total-display').value} Duties\n`;
+            });
+            text += '\n';
+        });
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+
+    window.onload = () => { populateSelectors(); init(); };
+</script>
+</body>
+</html>
