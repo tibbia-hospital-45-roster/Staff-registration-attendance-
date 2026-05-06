@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hospital Roster - Clean PDF</title>
+    <title>Smart Hospital Roster - Month-Wise Save</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -24,18 +24,14 @@
         .is-holiday { background-color: #90ee90 !important; } 
         .col-tot-highlight { background: #f1c40f !important; font-weight: bold; width: 60px; font-size: 12px; }
         .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 10px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
-        
-        /* PDF me ye cheezein nahi dikhengi */
-        .no-pdf { display: flex !important; }
         .pdf-mode .no-pdf { display: none !important; }
         .pdf-mode .main-controls { display: none !important; }
-
         @media print { .main-controls, .staff-controls { display: none !important; } }
     </style>
 </head>
 <body>
 
-<div class="main-controls">
+<div class="main-controls no-pdf">
     <select id="yearSelect" onchange="init()"></select>
     <select id="monthSelect" onchange="init()"></select>
     <button class="btn btn-green" onclick="saveData()">💾 SAVE</button>
@@ -49,13 +45,13 @@
     <div class="header">
         <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
         <p id="hospLoc" contenteditable="true">KAROL BAGH, NEW DELHI</p>
-        <p style="text-decoration: underline;">OPD & IPD ATTENDANCE ROSTER</p>
+        <p style="text-decoration: underline; font-weight: bold;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
     </div>
     <div id="tablesContainer"></div>
 </div>
 
 <script>
-    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const monthsArr = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     const daysArr = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const doubleShifts = ["M+E", "E+M", "N+M", "M+N", "E+N", "N+E"];
     const holidayCodes = ["G/H/D", "GH", "GHD", "H"];
@@ -65,13 +61,16 @@
         const moSelect = document.getElementById('monthSelect');
         const now = new Date();
         for(let i=2024; i<=2035; i++) yrSelect.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
-        months.forEach((m, i) => moSelect.add(new Option(m, i, i === now.getMonth(), i === now.getMonth())));
+        monthsArr.forEach((m, i) => moSelect.add(new Option(m, i, i === now.getMonth(), i === now.getMonth())));
     }
 
     function init() {
         const year = parseInt(document.getElementById('yearSelect').value);
         const month = parseInt(document.getElementById('monthSelect').value);
         const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        document.getElementById('displayMonthYear').innerText = monthsArr[month] + " " + year;
+        
         document.getElementById('tablesContainer').innerHTML = `
             ${createTableHTML("OPD REGISTRATION", "opd", daysInMonth)}
             ${createTableHTML("IPD REGISTRATION", "ipd", daysInMonth)}
@@ -87,9 +86,9 @@
             <div class="section-header" style="background:#2c3e50; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px;">
                 ${title}
                 <div class="staff-controls no-pdf">
-                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px;">
+                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; padding:2px;">
                     <button class="btn btn-purple" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
-                    <select id="${id}DelSelect"><option value="">DELETE</option></select>
+                    <select id="${id}DelSelect" style="font-size:10px;"><option value="">DELETE</option></select>
                     <button class="btn btn-orange" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">DEL</button>
                 </div>
             </div>
@@ -168,36 +167,31 @@
         });
     }
 
-    function downloadPDF() {
-        // PDF mode on karke controls chhupana
-        document.body.classList.add('pdf-mode');
-        const element = document.getElementById('capture-area');
-        const opt = { 
-            margin: 5, 
-            filename: 'Hospital_Roster.pdf', 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2 }, 
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-        };
-        
-        html2pdf().set(opt).from(element).save().then(() => {
-            // PDF download ke baad wapas dikhana
-            document.body.classList.remove('pdf-mode');
-        });
+    // --- MAIN FIX FOR MONTH-WISE STORAGE ---
+    function getStorageKey() {
+        const year = document.getElementById('yearSelect').value;
+        const month = document.getElementById('monthSelect').value;
+        return `RosterData_${year}_${month}`; // Key example: RosterData_2026_4
     }
 
     function saveData() {
+        const key = getStorageKey();
         const data = { 
-            hosp: document.getElementById('hospName').innerText, loc: document.getElementById('hospLoc').innerText,
+            hosp: document.getElementById('hospName').innerText, 
+            loc: document.getElementById('hospLoc').innerText,
             opd: Array.from(document.getElementById('opdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)})),
             ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
         };
-        localStorage.setItem('smartRosterCleanPDF', JSON.stringify(data));
-        alert("Data Saved!");
+        localStorage.setItem(key, JSON.stringify(data));
+        alert("Data Saved for " + monthsArr[document.getElementById('monthSelect').value] + "!");
     }
 
     function loadData(days) {
-        const saved = localStorage.getItem('smartRosterCleanPDF');
+        const key = getStorageKey();
+        const saved = localStorage.getItem(key);
+        document.getElementById('opdBody').innerHTML = "";
+        document.getElementById('ipdBody').innerHTML = "";
+        
         if(saved) {
             const d = JSON.parse(saved);
             document.getElementById('hospName').innerText = d.hosp;
@@ -205,21 +199,36 @@
             d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
             d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
         } else {
+            // Default names if no data for that month
             ["RINKU", "SUSHIL", "RAJENDER", "SUNITA"].forEach(n => addStaffRow('opdBody', n, null, days));
         }
+    }
+
+    function downloadPDF() {
+        document.body.classList.add('pdf-mode');
+        const element = document.getElementById('capture-area');
+        const opt = { 
+            margin: 5, 
+            filename: 'Hospital_Roster_' + getStorageKey() + '.pdf', 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2 }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+        };
+        html2pdf().set(opt).from(element).save().then(() => document.body.classList.remove('pdf-mode'));
     }
 
     function exportExcel() {
         let wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("opdTable")), "OPD");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("ipdTable")), "IPD");
-        XLSX.writeFile(wb, "Hospital_Roster.xlsx");
+        XLSX.writeFile(wb, "Roster_" + getStorageKey() + ".xlsx");
     }
 
     function shareWhatsApp() {
         let h = document.getElementById('hospName').innerText;
-        let m = months[document.getElementById('monthSelect').value];
-        let text = `*${h} REPORT - ${m}*\n\n`;
+        let m = monthsArr[document.getElementById('monthSelect').value];
+        let y = document.getElementById('yearSelect').value;
+        let text = `*${h} REPORT - ${m} ${y}*\n\n`;
         ['opdBody', 'ipdBody'].forEach(id => {
             text += `*--- ${id.replace('Body','').toUpperCase()} ---*\n`;
             document.getElementById(id).querySelectorAll('tr').forEach(tr => {
