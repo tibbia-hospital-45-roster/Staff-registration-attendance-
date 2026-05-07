@@ -1,29 +1,47 @@
-                <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hospital Roster - Month-Wise Save</title>
+    <title>Smart Hospital Roster - Custom CSS Logos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @page { size: A4 landscape; margin: 5mm; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #fff; font-size: 11px; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; }
-        .header h1 { font-size: 18px; margin: 0; text-transform: uppercase; }
+        body { font-family: sans-serif; margin: 0; padding: 10px; background: #fff; font-size: 11px; }
+        
+        /* --- CUSTOM CSS LOGOS --- */
+        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 5px; }
+        
+        /* TCIL CSS Logo (Left) */
+        .tcil-logo-css { width: 60px; height: 60px; border: 3px solid #003399; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative; background: #fff; }
+        .tcil-logo-css::before { content: "TCIL"; font-weight: bold; font-size: 16px; color: #003399; letter-spacing: 1px; }
+        .tcil-logo-css::after { content: ""; position: absolute; width: 100%; height: 4px; background: #003399; top: 50%; left: 0; transform: translateY(-50%); z-index: -1; }
+
+        /* Chandrika Solutions CSS Logo (Right) */
+        .cs-logo-css { width: 140px; text-align: right; border-right: 4px solid #1e40af; padding-right: 8px; }
+        .cs-logo-css .top-text { font-size: 14px; font-weight: bold; color: #1e40af; margin: 0; }
+        .cs-logo-css .bottom-text { font-size: 8px; color: #666; margin: 0; letter-spacing: 1px; }
+
+        .header-text { text-align: center; flex: 1; }
+        .header-text h1 { font-size: 20px; margin: 0; text-transform: uppercase; }
+        
+        /* Table & Controls */
         .main-controls { display: flex; justify-content: center; gap: 8px; background: #eee; padding: 10px; border: 1px solid #ccc; margin-bottom: 10px; align-items: center; }
         .btn { border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
-        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
+        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
         .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; }
+        
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
-        th, td { border: 1px solid #333; text-align: center; height: 32px; }
-        .row-label { background: #f9f9f9; font-weight: bold; text-align: left; padding-left: 8px; width: 140px; }
-        .sunday-col { background: #ffc0cb !important; border-left: 1.5px solid #d00 !important; border-right: 1.5px solid #d00 !important; }
-        .is-off { background-color: #ffff99 !important; } 
-        .is-double { background-color: #87CEEB !important; } 
-        .is-holiday { background-color: #90ee90 !important; } 
+        th, td { border: 1px solid #333; text-align: center; height: 32px; font-weight: bold; }
+        .row-label { background: #f9f9f9; text-align: left; padding-left: 8px; width: 140px; }
+        .sunday-col { background: #ffc0cb !important; }
+        .is-off { background-color: #ffff99 !important; } 
+        .is-double { background-color: #87CEEB !important; } 
+        .is-holiday { background-color: #90ee90 !important; } 
         .col-tot-highlight { background: #f1c40f !important; font-weight: bold; width: 60px; font-size: 12px; }
-        .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 10px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
+        .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 11px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
+        
         .pdf-mode .no-pdf { display: none !important; }
         .pdf-mode .main-controls { display: none !important; }
         @media print { .main-controls, .staff-controls { display: none !important; } }
@@ -42,10 +60,19 @@
 </div>
 
 <div id="capture-area">
-    <div class="header">
-        <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
-        <p id="hospLoc" contenteditable="true">KAROL BAGH, NEW DELHI</p>
-        <p style="text-decoration: underline; font-weight: bold;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
+    <div class="header-container">
+        <div class="tcil-logo-css"></div>
+
+        <div class="header-text">
+            <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
+            <p id="hospLoc" contenteditable="true" style="margin: 2px 0;">KAROL BAGH, NEW DELHI</p>
+            <p style="text-decoration: underline; font-weight: bold; margin: 2px 0;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
+        </div>
+
+        <div class="cs-logo-css">
+            <p class="top-text">Chandrika</p>
+            <p class="bottom-text">SOLUTIONS</p>
+        </div>
     </div>
     <div id="tablesContainer"></div>
 </div>
@@ -68,7 +95,6 @@
         const year = parseInt(document.getElementById('yearSelect').value);
         const month = parseInt(document.getElementById('monthSelect').value);
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
         document.getElementById('displayMonthYear').innerText = monthsArr[month] + " " + year;
         
         document.getElementById('tablesContainer').innerHTML = `
@@ -83,13 +109,13 @@
 
     function createTableHTML(title, id, days) {
         return `
-            <div class="section-header" style="background:#2c3e50; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px;">
+            <div class="section-header" style="background:#2c3e50; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px; border-radius: 3px 3px 0 0;">
                 ${title}
                 <div class="staff-controls no-pdf">
-                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; padding:2px;">
-                    <button class="btn btn-purple" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
-                    <select id="${id}DelSelect" style="font-size:10px;"><option value="">DELETE</option></select>
-                    <button class="btn btn-orange" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">DEL</button>
+                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; width: 100px;">
+                    <button class="btn btn-purple" style="padding: 2px 8px;" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
+                    <select id="${id}DelSelect" style="font-size:10px;"><option value="">DEL</option></select>
+                    <button class="btn btn-orange" style="padding: 2px 8px;" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">OK</button>
                 </div>
             </div>
             <table id="${id}Table"><thead><tr id="${id}Dates"></tr><tr id="${id}Days"></tr></thead><tbody id="${id}Body"></tbody></table>`;
@@ -161,7 +187,7 @@
             const selectId = id.replace('Body','DelSelect');
             const select = document.getElementById(selectId);
             if(select) {
-                select.innerHTML = '<option value="">DELETE</option>';
+                select.innerHTML = '<option value="">DEL</option>';
                 document.getElementById(id).querySelectorAll('tr').forEach((tr, i) => select.add(new Option(tr.cells[0].innerText.trim(), i)));
             }
         });
@@ -191,7 +217,6 @@
         const saved = localStorage.getItem(key);
         document.getElementById('opdBody').innerHTML = "";
         document.getElementById('ipdBody').innerHTML = "";
-        
         if(saved) {
             const d = JSON.parse(saved);
             document.getElementById('hospName').innerText = d.hosp;
@@ -199,7 +224,6 @@
             d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
             d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
         } else {
-            // Default names if no data for that month
             ["RINKU", "SUSHIL", "RAJENDER", "SUNITA"].forEach(n => addStaffRow('opdBody', n, null, days));
         }
     }
