@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+
+    <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hospital Roster - Custom CSS Logos</title>
+    <title>Smart Hospital Roster - Auto Color</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -13,12 +14,10 @@
         /* --- CUSTOM CSS LOGOS --- */
         .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 5px; }
         
-        /* TCIL CSS Logo (Left) */
         .tcil-logo-css { width: 60px; height: 60px; border: 3px solid #003399; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative; background: #fff; }
         .tcil-logo-css::before { content: "TCIL"; font-weight: bold; font-size: 16px; color: #003399; letter-spacing: 1px; }
         .tcil-logo-css::after { content: ""; position: absolute; width: 100%; height: 4px; background: #003399; top: 50%; left: 0; transform: translateY(-50%); z-index: -1; }
 
-        /* Chandrika Solutions CSS Logo (Right) */
         .cs-logo-css { width: 140px; text-align: right; border-right: 4px solid #1e40af; padding-right: 8px; }
         .cs-logo-css .top-text { font-size: 14px; font-weight: bold; color: #1e40af; margin: 0; }
         .cs-logo-css .bottom-text { font-size: 8px; color: #666; margin: 0; letter-spacing: 1px; }
@@ -26,19 +25,21 @@
         .header-text { text-align: center; flex: 1; }
         .header-text h1 { font-size: 20px; margin: 0; text-transform: uppercase; }
         
-        /* Table & Controls */
         .main-controls { display: flex; justify-content: center; gap: 8px; background: #eee; padding: 10px; border: 1px solid #ccc; margin-bottom: 10px; align-items: center; }
         .btn { border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
-        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
+        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
         .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
         th, td { border: 1px solid #333; text-align: center; height: 32px; font-weight: bold; }
         .row-label { background: #f9f9f9; text-align: left; padding-left: 8px; width: 140px; }
-        .sunday-col { background: #ffc0cb !important; }
-        .is-off { background-color: #ffff99 !important; } 
-        .is-double { background-color: #87CEEB !important; } 
-        .is-holiday { background-color: #90ee90 !important; } 
+        
+        /* Rangon ki settings */
+        .sunday-col { background: #ffc0cb !important; } /* Pink Sunday */
+        .is-off { background-color: #ffff99 !important; } /* Yellow OFF */
+        .is-double { background-color: #87CEEB !important; } /* Blue Double */
+        .is-holiday { background-color: #90ee90 !important; } /* Green Holiday */
+        
         .col-tot-highlight { background: #f1c40f !important; font-weight: bold; width: 60px; font-size: 12px; }
         .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 11px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
         
@@ -62,13 +63,11 @@
 <div id="capture-area">
     <div class="header-container">
         <div class="tcil-logo-css"></div>
-
         <div class="header-text">
             <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
             <p id="hospLoc" contenteditable="true" style="margin: 2px 0;">KAROL BAGH, NEW DELHI</p>
             <p style="text-decoration: underline; font-weight: bold; margin: 2px 0;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
         </div>
-
         <div class="cs-logo-css">
             <p class="top-text">Chandrika</p>
             <p class="bottom-text">SOLUTIONS</p>
@@ -138,18 +137,22 @@
 
     function handleLogic(input) {
         const val = input.value.toUpperCase();
-        input.parentElement.classList.remove('is-off', 'is-double', 'is-holiday');
-        if (val === "OFF") input.parentElement.classList.add('is-off');
-        else if (doubleShifts.includes(val)) input.parentElement.classList.add('is-double');
-        else if (holidayCodes.includes(val)) input.parentElement.classList.add('is-holiday');
+        const cell = input.parentElement;
+        
+        // Automatic Color Logic
+        cell.classList.remove('is-off', 'is-double', 'is-holiday');
+        if (val === "OFF") cell.classList.add('is-off');
+        else if (doubleShifts.includes(val)) cell.classList.add('is-double');
+        else if (holidayCodes.includes(val)) cell.classList.add('is-holiday');
 
+        // Total calculation logic
         const row = input.closest('tr');
         const attendanceInputs = row.querySelectorAll('.attendance-input');
         let totalDuty = 0;
         attendanceInputs.forEach(i => {
             let v = i.value.toUpperCase();
             if (doubleShifts.includes(v)) totalDuty += 2;
-            else if (["M","E","N","P","GH","GHD","G/H/D"].includes(v)) totalDuty += 1;
+            else if (["M","E","N","P","GH","GHD","G/H/D", "H"].includes(v)) totalDuty += 1;
         });
         row.querySelector('.total-display').value = totalDuty;
     }
@@ -193,11 +196,10 @@
         });
     }
 
-    // --- MAIN FIX FOR MONTH-WISE STORAGE ---
     function getStorageKey() {
         const year = document.getElementById('yearSelect').value;
         const month = document.getElementById('monthSelect').value;
-        return `RosterData_${year}_${month}`; // Key example: RosterData_2026_4
+        return `RosterData_${year}_${month}`;
     }
 
     function saveData() {
@@ -209,7 +211,7 @@
             ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
         };
         localStorage.setItem(key, JSON.stringify(data));
-        alert("Data Saved for " + monthsArr[document.getElementById('monthSelect').value] + "!");
+        alert("Data Saved Successfully!");
     }
 
     function loadData(days) {
