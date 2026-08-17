@@ -1,18 +1,33 @@
-
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hospital Roster - Auto Color</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <title>Smart Hospital Roster - Month Wise</title>
     <style>
         @page { size: A4 landscape; margin: 5mm; }
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: #fff; font-size: 11px; }
         
-        /* --- CUSTOM CSS LOGOS --- */
-        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 5px; }
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(#cbd5e1 1px, transparent 1px), 
+                radial-gradient(#cbd5e1 1px, #f8fafc 1px);
+            background-size: 24px 24px;
+            background-position: 0 0, 12px 12px;
+            font-size: 11px; 
+        }
+        
+        #capture-area {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #003399; padding-bottom: 8px; margin-bottom: 5px; }
         
         .tcil-logo-css { width: 60px; height: 60px; border: 3px solid #003399; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative; background: #fff; }
         .tcil-logo-css::before { content: "TCIL"; font-weight: bold; font-size: 16px; color: #003399; letter-spacing: 1px; }
@@ -23,40 +38,52 @@
         .cs-logo-css .bottom-text { font-size: 8px; color: #666; margin: 0; letter-spacing: 1px; }
 
         .header-text { text-align: center; flex: 1; }
-        .header-text h1 { font-size: 20px; margin: 0; text-transform: uppercase; }
+        .header-text h1 { font-size: 20px; margin: 0; text-transform: uppercase; color: #003399; }
         
-        .main-controls { display: flex; justify-content: center; gap: 8px; background: #eee; padding: 10px; border: 1px solid #ccc; margin-bottom: 10px; align-items: center; }
-        .btn { border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        .main-controls { display: flex; justify-content: center; gap: 6px; background: #e2ecfc; padding: 10px; border: 1px solid #bce0fd; border-radius: 5px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+        .main-controls select { padding: 6px 10px; font-size: 11px; font-weight: bold; background: #ffffff !important; color: #000000 !important; border: 1px solid #777; border-radius: 3px; cursor: pointer; }
+        .main-controls select option { background: #ffffff; color: #000000; }
+
+        .btn { border: none; padding: 6px 10px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
         .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
-        .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; }
+        .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; } .btn-blue { background: #2980b9; } .btn-dark { background: #34495e; }
         
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; background: #fff; }
         th, td { border: 1px solid #333; text-align: center; height: 32px; font-weight: bold; }
-        .row-label { background: #f9f9f9; text-align: left; padding-left: 8px; width: 140px; }
+        .row-label { background: #f1f5f9; text-align: left; padding-left: 8px; width: 140px; }
         
-        /* Rangon ki settings */
-        .sunday-col { background: #ffc0cb !important; } /* Pink Sunday */
-        .is-off { background-color: #ffff99 !important; } /* Yellow OFF */
-        .is-double { background-color: #87CEEB !important; } /* Blue Double */
-        .is-holiday { background-color: #90ee90 !important; } /* Green Holiday */
+        .sunday-col { background: #ffd1dc !important; } 
+        .is-off { background-color: #fffacd !important; } 
+        .is-double { background-color: #cce7ff !important; } 
         
-        .col-tot-highlight { background: #f1c40f !important; font-weight: bold; width: 60px; font-size: 12px; }
+        td.is-holiday, tr td.is-holiday, .is-holiday { 
+            background-color: #2ecc71 !important; 
+            color: #ffffff !important; 
+        } 
+        
+        .col-tot-highlight { background: #ffeeba !important; font-weight: bold; width: 60px; font-size: 12px; }
         .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 11px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
         
         .pdf-mode .no-pdf { display: none !important; }
         .pdf-mode .main-controls { display: none !important; }
-        @media print { .main-controls, .staff-controls { display: none !important; } }
+        @media print { 
+            body { background: #fff !important; }
+            #capture-area { box-shadow: none; padding: 0; }
+            .main-controls, .staff-controls { display: none !important; } 
+        }
     </style>
 </head>
 <body>
 
 <div class="main-controls no-pdf">
-    <select id="yearSelect" onchange="init()"></select>
     <select id="monthSelect" onchange="init()"></select>
-    <button class="btn btn-green" onclick="saveData()">💾 SAVE</button>
+    <select id="yearSelect" onchange="init()"></select>
+    <button class="btn btn-green" onclick="saveData(true)">💾 SAVE</button>
+    <button class="btn btn-blue" onclick="exportExcel()">📊 EXCEL</button>
     <button class="btn btn-pdf" onclick="downloadPDF()">📄 PDF</button>
-    <button class="btn btn-green" onclick="exportExcel()">📊 EXCEL</button>
-    <button class="btn btn-wa" onclick="shareWhatsApp()">📱 WHATSAPP</button>
+    <button class="btn btn-dark" onclick="resetData()">🔄 RESET</button>
+    <button class="btn btn-purple" onclick="downloadBackupHTML()">📥 OFFLINE</button>
+    <button class="btn btn-wa" onclick="shareWhatsApp()">📱 WA</button>
     <button class="btn btn-red" onclick="window.print()">🖨️ PRINT</button>
 </div>
 
@@ -64,8 +91,8 @@
     <div class="header-container">
         <div class="tcil-logo-css"></div>
         <div class="header-text">
-            <h1 contenteditable="true" id="hospName">TIBBIA HOSPITAL</h1>
-            <p id="hospLoc" contenteditable="true" style="margin: 2px 0;">KAROL BAGH, NEW DELHI</p>
+            <h1 contenteditable="true" id="hospName" oninput="saveData(false)">TIBBIA HOSPITAL</h1>
+            <p id="hospLoc" contenteditable="true" style="margin: 2px 0;" oninput="saveData(false)">KAROL BAGH, NEW DELHI</p>
             <p style="text-decoration: underline; font-weight: bold; margin: 2px 0;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
         </div>
         <div class="cs-logo-css">
@@ -76,23 +103,58 @@
     <div id="tablesContainer"></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <script>
     const monthsArr = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     const daysArr = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const doubleShifts = ["M+E", "E+M", "N+M", "M+N", "E+N", "N+E"];
-    const holidayCodes = ["G/H/D", "GH", "GHD", "H"];
+    const holidayCodes = ["G/H/D", "GH", "GHD", "H", "PH", "G/H"];
+
+    window.onload = function() {
+        populateSelectors();
+        init();
+    };
 
     function populateSelectors() {
         const yrSelect = document.getElementById('yearSelect');
         const moSelect = document.getElementById('monthSelect');
+        if(!yrSelect || !moSelect) return;
+        
+        yrSelect.innerHTML = "";
+        moSelect.innerHTML = "";
+        
         const now = new Date();
-        for(let i=2024; i<=2035; i++) yrSelect.add(new Option(i, i, i === now.getFullYear(), i === now.getFullYear()));
-        monthsArr.forEach((m, i) => moSelect.add(new Option(m, i, i === now.getMonth(), i === now.getMonth())));
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        monthsArr.forEach((m, i) => {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.text = m;
+            if(i === currentMonth) opt.selected = true;
+            moSelect.appendChild(opt);
+        });
+
+        for(let i = 2024; i <= 2035; i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.text = i;
+            if(i === currentYear) opt.selected = true;
+            yrSelect.appendChild(opt);
+        }
     }
 
     function init() {
-        const year = parseInt(document.getElementById('yearSelect').value);
-        const month = parseInt(document.getElementById('monthSelect').value);
+        const yrElem = document.getElementById('yearSelect');
+        const moElem = document.getElementById('monthSelect');
+        if(!yrElem || !moElem) return;
+        
+        const year = parseInt(yrElem.value);
+        const month = parseInt(moElem.value);
+        if(isNaN(year) || isNaN(month)) return;
+
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         document.getElementById('displayMonthYear').innerText = monthsArr[month] + " " + year;
         
@@ -108,13 +170,13 @@
 
     function createTableHTML(title, id, days) {
         return `
-            <div class="section-header" style="background:#2c3e50; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px; border-radius: 3px 3px 0 0;">
+            <div class="section-header" style="background:#1e3a8a; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px; border-radius: 3px 3px 0 0;">
                 ${title}
                 <div class="staff-controls no-pdf">
-                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; width: 100px;">
-                    <button class="btn btn-purple" style="padding: 2px 8px;" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
-                    <select id="${id}DelSelect" style="font-size:10px;"><option value="">DEL</option></select>
-                    <button class="btn btn-orange" style="padding: 2px 8px;" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">OK</button>
+                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; width: 70px;">
+                    <button class="btn btn-purple" style="padding: 2px 5px;" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
+                    <select id="${id}DelSelect" style="font-size:10px; color:#000; background:#fff;"><option value="">DEL</option></select>
+                    <button class="btn btn-orange" style="padding: 2px 5px;" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">OK</button>
                 </div>
             </div>
             <table id="${id}Table"><thead><tr id="${id}Dates"></tr><tr id="${id}Days"></tr></thead><tbody id="${id}Body"></tbody></table>`;
@@ -123,6 +185,7 @@
     function renderHeaders(id, year, month, totalDays) {
         const dRow = document.getElementById(id + 'Dates');
         const dyRow = document.getElementById(id + 'Days');
+        if(!dRow || !dyRow) return;
         dRow.innerHTML = '<td class="row-label">DATE</td>';
         dyRow.innerHTML = '<td class="row-label">DAY</td>';
         for(let i=1; i<=totalDays; i++) {
@@ -136,35 +199,44 @@
     }
 
     function handleLogic(input) {
-        const val = input.value.toUpperCase();
+        const val = input.value.toUpperCase().trim();
         const cell = input.parentElement;
         
-        // Automatic Color Logic
         cell.classList.remove('is-off', 'is-double', 'is-holiday');
-        if (val === "OFF") cell.classList.add('is-off');
-        else if (doubleShifts.includes(val)) cell.classList.add('is-double');
-        else if (holidayCodes.includes(val)) cell.classList.add('is-holiday');
+        
+        if (holidayCodes.includes(val)) {
+            cell.classList.add('is-holiday');
+        } else if (val === "OFF") {
+            cell.classList.add('is-off');
+        } else if (doubleShifts.includes(val)) {
+            cell.classList.add('is-double');
+        }
 
-        // Total calculation logic
         const row = input.closest('tr');
         const attendanceInputs = row.querySelectorAll('.attendance-input');
         let totalDuty = 0;
         attendanceInputs.forEach(i => {
-            let v = i.value.toUpperCase();
-            if (doubleShifts.includes(v)) totalDuty += 2;
-            else if (["M","E","N","P","GH","GHD","G/H/D", "H"].includes(v)) totalDuty += 1;
+            let v = i.value.toUpperCase().trim();
+            if (doubleShifts.includes(v)) {
+                totalDuty += 2;
+            } else if (["M", "E", "N", "P", "GH", "GHD", "G/H/D", "H", "PH", "G/H"].includes(v)) {
+                totalDuty += 1;
+            }
         });
         row.querySelector('.total-display').value = totalDuty;
+        saveData(false);
     }
 
     function addStaffRow(bodyId, name, existingData = null, daysCount = 31) {
         const body = document.getElementById(bodyId);
+        if(!body) return;
         let row = document.createElement('tr');
         let html = `<td class="row-label">${name}</td>`;
         const year = parseInt(document.getElementById('yearSelect').value);
         const month = parseInt(document.getElementById('monthSelect').value);
         for(let i=1; i<=daysCount; i++) {
-            let sunClass = (daysArr[new Date(year, month, i).getDay()] === "SUN") ? 'sunday-col' : '';
+            let dayName = daysArr[new Date(year, month, i).getDay()];
+            let sunClass = (dayName === "SUN") ? 'sunday-col' : '';
             let val = (existingData && existingData[i-1]) ? existingData[i-1] : "";
             html += `<td class="${sunClass}"><input class="cell-edit attendance-input" type="text" value="${val}" oninput="handleLogic(this)"></td>`;
         }
@@ -175,58 +247,106 @@
     }
 
     function addStaff(bodyId, inputId) {
-        const name = document.getElementById(inputId).value;
+        const nameInput = document.getElementById(inputId);
+        if(!nameInput) return;
+        const name = nameInput.value;
         const days = new Date(document.getElementById('yearSelect').value, parseInt(document.getElementById('monthSelect').value) + 1, 0).getDate();
-        if(name) { addStaffRow(bodyId, name.toUpperCase(), null, days); document.getElementById(inputId).value = ""; updateDropdowns(); saveData(); }
+        if(name) { 
+            addStaffRow(bodyId, name.toUpperCase(), null, days); 
+            nameInput.value = ""; 
+            updateDropdowns(); 
+            saveData(true); 
+        }
     }
 
     function deleteSelectedStaff(bodyId, selectId) {
         const select = document.getElementById(selectId);
-        if(select.value !== "" && confirm("Delete staff?")) { document.getElementById(bodyId).deleteRow(select.value); updateDropdowns(); saveData(); }
+        if(select && select.value !== "" && confirm("Delete staff?")) { 
+            document.getElementById(bodyId).deleteRow(select.value); 
+            updateDropdowns(); 
+            saveData(true); 
+        }
     }
 
     function updateDropdowns() {
         ['opdBody','ipdBody'].forEach(id => {
             const selectId = id.replace('Body','DelSelect');
             const select = document.getElementById(selectId);
-            if(select) {
+            const body = document.getElementById(id);
+            if(select && body) {
                 select.innerHTML = '<option value="">DEL</option>';
-                document.getElementById(id).querySelectorAll('tr').forEach((tr, i) => select.add(new Option(tr.cells[0].innerText.trim(), i)));
+                body.querySelectorAll('tr').forEach((tr, i) => select.add(new Option(tr.cells[0].innerText.trim(), i)));
             }
         });
     }
 
     function getStorageKey() {
-        const year = document.getElementById('yearSelect').value;
-        const month = document.getElementById('monthSelect').value;
+        const yr = document.getElementById('yearSelect');
+        const mo = document.getElementById('monthSelect');
+        let year = yr ? yr.value : new Date().getFullYear();
+        let month = mo ? mo.value : new Date().getMonth();
         return `RosterData_${year}_${month}`;
     }
 
-    function saveData() {
-        const key = getStorageKey();
-        const data = { 
-            hosp: document.getElementById('hospName').innerText, 
-            loc: document.getElementById('hospLoc').innerText,
-            opd: Array.from(document.getElementById('opdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)})),
-            ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-        alert("Data Saved Successfully!");
+    function saveData(showAlert = false) {
+        try {
+            const key = getStorageKey();
+            const data = { 
+                hosp: document.getElementById('hospName').innerText, 
+                loc: document.getElementById('hospLoc').innerText,
+                opd: Array.from(document.getElementById('opdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)})),
+                ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
+            };
+            localStorage.setItem(key, JSON.stringify(data));
+            if(showAlert) alert("Data Saved Successfully!");
+        } catch(e) {
+            console.error(e);
+        }
     }
 
     function loadData(days) {
         const key = getStorageKey();
         const saved = localStorage.getItem(key);
-        document.getElementById('opdBody').innerHTML = "";
-        document.getElementById('ipdBody').innerHTML = "";
+        const opdBody = document.getElementById('opdBody');
+        const ipdBody = document.getElementById('ipdBody');
+        if(!opdBody || !ipdBody) return;
+        
+        opdBody.innerHTML = "";
+        ipdBody.innerHTML = "";
+        
+        let opdLoaded = false;
+        let ipdLoaded = false;
+
         if(saved) {
-            const d = JSON.parse(saved);
-            document.getElementById('hospName').innerText = d.hosp;
-            document.getElementById('hospLoc').innerText = d.loc;
-            d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
-            d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
-        } else {
+            try {
+                const d = JSON.parse(saved);
+                document.getElementById('hospName').innerText = d.hosp || "TIBBIA HOSPITAL";
+                document.getElementById('hospLoc').innerText = d.loc || "KAROL BAGH, NEW DELHI";
+                
+                if(d.opd && d.opd.length > 0) {
+                    d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
+                    opdLoaded = true;
+                }
+                if(d.ipd && d.ipd.length > 0) {
+                    d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
+                    ipdLoaded = true;
+                }
+            } catch(e) {}
+        }
+
+        if(!opdLoaded) {
             ["RINKU", "SUSHIL", "RAJENDER", "SUNITA"].forEach(n => addStaffRow('opdBody', n, null, days));
+        }
+        if(!ipdLoaded) {
+            ["AMIT", "POOJA", "RAHUL", "PRIYA"].forEach(n => addStaffRow('ipdBody', n, null, days));
+        }
+    }
+
+    function resetData() {
+        if(confirm("Are you sure you want to reset this month's roster to default?")) {
+            localStorage.removeItem(getStorageKey());
+            init();
+            alert("Roster reset successfully!");
         }
     }
 
@@ -240,14 +360,62 @@
             html2canvas: { scale: 2 }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
         };
-        html2pdf().set(opt).from(element).save().then(() => document.body.classList.remove('pdf-mode'));
+        if(typeof html2pdf !== 'undefined') {
+            html2pdf().set(opt).from(element).save().then(() => document.body.classList.remove('pdf-mode'));
+        } else {
+            alert("PDF Library not loaded.");
+            document.body.classList.remove('pdf-mode');
+        }
     }
 
     function exportExcel() {
+        if(typeof XLSX === 'undefined') {
+            alert("Excel Library not loaded.");
+            return;
+        }
         let wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("opdTable")), "OPD");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById("ipdTable")), "IPD");
-        XLSX.writeFile(wb, "Roster_" + getStorageKey() + ".xlsx");
+        function formatTableToSheet(tableId, titleText) {
+            let table = document.getElementById(tableId);
+            if(!table) return XLSX.utils.aoa_to_sheet([]);
+            let rows = table.querySelectorAll('tr');
+            let aoa = [];
+            aoa.push([titleText]);
+            aoa.push([]);
+            rows.forEach(tr => {
+                let rowData = [];
+                tr.querySelectorAll('th, td').forEach(cell => {
+                    let input = cell.querySelector('input');
+                    if (input) {
+                        rowData.push(input.value || '');
+                    } else {
+                        rowData.push(cell.innerText.trim());
+                    }
+                });
+                aoa.push(rowData);
+            });
+            return XLSX.utils.aoa_to_sheet(aoa);
+        }
+
+        let wsOpd = formatTableToSheet('opdTable', 'OPD REGISTRATION ROSTER');
+        let wsIpd = formatTableToSheet('ipdTable', 'IPD REGISTRATION ROSTER');
+
+        XLSX.utils.book_append_sheet(wb, wsOpd, "OPD");
+        XLSX.utils.book_append_sheet(wb, wsIpd, "IPD");
+        XLSX.writeFile(wb, "Hospital_Roster_" + getStorageKey() + ".xlsx");
+    }
+
+    function downloadBackupHTML() {
+        saveData(false);
+        let htmlContent = document.documentElement.outerHTML;
+        let blob = new Blob([htmlContent], { type: 'text/html' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `Hospital_Roster_${getStorageKey()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     function shareWhatsApp() {
@@ -256,16 +424,19 @@
         let y = document.getElementById('yearSelect').value;
         let text = `*${h} REPORT - ${m} ${y}*\n\n`;
         ['opdBody', 'ipdBody'].forEach(id => {
-            text += `*--- ${id.replace('Body','').toUpperCase()} ---*\n`;
-            document.getElementById(id).querySelectorAll('tr').forEach(tr => {
-                text += `${tr.cells[0].innerText.trim()}: ${tr.querySelector('.total-display').value} Duties\n`;
-            });
-            text += '\n';
+            let body = document.getElementById(id);
+            if(body) {
+                text += `*--- ${id.replace('Body','').toUpperCase()} ---*\n`;
+                body.querySelectorAll('tr').forEach(tr => {
+                    let totalInput = tr.querySelector('.total-display');
+                    let totalVal = totalInput ? totalInput.value : '0';
+                    text += `${tr.cells[0].innerText.trim()}: ${totalVal} Duties\n`;
+                });
+                text += '\n';
+            }
         });
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     }
-
-    window.onload = () => { populateSelectors(); init(); };
 </script>
 </body>
 </html>
