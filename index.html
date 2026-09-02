@@ -1,442 +1,1113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hospital Roster - Month Wise</title>
-    <style>
-        @page { size: A4 landscape; margin: 5mm; }
-        
-        body { 
-            font-family: sans-serif; 
-            margin: 0; 
-            padding: 10px; 
-            background-color: #f8fafc;
-            background-image: 
-                radial-gradient(#cbd5e1 1px, transparent 1px), 
-                radial-gradient(#cbd5e1 1px, #f8fafc 1px);
-            background-size: 24px 24px;
-            background-position: 0 0, 12px 12px;
-            font-size: 11px; 
-        }
-        
-        #capture-area {
-            background: rgba(255, 255, 255, 0.98);
-            padding: 15px;
-            border-radius: 6px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Duty Roster - Tibbia College & Hospital</title>
+<!-- SheetJS for 100% Offline Excel (.xlsx) Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- html2pdf.js for Direct 1-Click PDF Download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  * { 
+    box-sizing: border-box; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body { margin: 0; padding: 12px; background-color: #f1f5f9; color: #1e293b; }
 
-        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #003399; padding-bottom: 8px; margin-bottom: 5px; }
-        
-        .tcil-logo-css { width: 60px; height: 60px; border: 3px solid #003399; border-radius: 5px; display: flex; align-items: center; justify-content: center; position: relative; background: #fff; }
-        .tcil-logo-css::before { content: "TCIL"; font-weight: bold; font-size: 16px; color: #003399; letter-spacing: 1px; }
-        .tcil-logo-css::after { content: ""; position: absolute; width: 100%; height: 4px; background: #003399; top: 50%; left: 0; transform: translateY(-50%); z-index: -1; }
+  /* Notification Toast */
+  #statusToast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    display: none;
+    z-index: 99999;
+    transition: opacity 0.3s ease;
+    border-left: 4px solid #10b981;
+  }
 
-        .cs-logo-css { width: 140px; text-align: right; border-right: 4px solid #1e40af; padding-right: 8px; }
-        .cs-logo-css .top-text { font-size: 14px; font-weight: bold; color: #1e40af; margin: 0; }
-        .cs-logo-css .bottom-text { font-size: 8px; color: #666; margin: 0; letter-spacing: 1px; }
+  /* Exit Modal Overlay */
+  #exitModalOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 999999;
+    justify-content: center;
+    align-items: center;
+  }
+  .exit-modal-box {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    max-width: 440px;
+    width: 90%;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    text-align: center;
+    border: 2px solid #0b62a4;
+    animation: popIn 0.2s ease-out;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
 
-        .header-text { text-align: center; flex: 1; }
-        .header-text h1 { font-size: 20px; margin: 0; text-transform: uppercase; color: #003399; }
-        
-        .main-controls { display: flex; justify-content: center; gap: 6px; background: #e2ecfc; padding: 10px; border: 1px solid #bce0fd; border-radius: 5px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
-        .main-controls select { padding: 6px 10px; font-size: 11px; font-weight: bold; background: #ffffff !important; color: #000000 !important; border: 1px solid #777; border-radius: 3px; cursor: pointer; }
-        .main-controls select option { background: #ffffff; color: #000000; }
+  /* Control Panel */
+  .control-panel {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #cbd5e1;
+  }
+  .panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .app-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0b62a4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  button {
+    padding: 8px 13px;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-print { background: #0284c7; color: #fff; }
+  .btn-print:hover { background: #0369a1; }
+  .btn-pdf { background: #e11d48; color: #fff; }
+  .btn-pdf:hover { background: #be123c; }
+  .btn-whatsapp { background: #25d366; color: #fff; }
+  .btn-whatsapp:hover { background: #1ebe5d; }
+  .btn-excel { background: #16a34a; color: #fff; }
+  .btn-excel:hover { background: #15803d; }
+  .btn-backup { background: #6366f1; color: #fff; }
+  .btn-backup:hover { background: #4f46e5; }
+  .btn-save { background: #0b62a4; color: #fff; }
+  .btn-save:hover { background: #084d82; }
+  .btn-exit { background: #475569; color: #fff; }
+  .btn-exit:hover { background: #334155; }
+  .btn-reset { background: #94a3b8; color: #fff; }
+  .btn-reset:hover { background: #64748b; }
+  .btn-add { background: #0d9488; color: #fff; padding: 6px 12px; }
+  .btn-add:hover { background: #0f766e; }
+  .btn-del-action { background: #dc2626; color: #fff; padding: 6px 12px; }
+  .btn-del-action:hover { background: #b91c1c; }
 
-        .btn { border: none; padding: 6px 10px; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 10px; text-transform: uppercase; }
-        .btn-green { background: #27ae60; } .btn-red { background: #e74c3c; } .btn-wa { background: #25D366; } 
-        .btn-purple { background: #8e44ad; } .btn-orange { background: #e67e22; } .btn-pdf { background: #f39c12; } .btn-blue { background: #2980b9; } .btn-dark { background: #34495e; }
-        
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; background: #fff; }
-        th, td { border: 1px solid #333; text-align: center; height: 32px; font-weight: bold; }
-        .row-label { background: #f1f5f9; text-align: left; padding-left: 8px; width: 140px; }
-        
-        .sunday-col { background: #ffd1dc !important; } 
-        .is-off { background-color: #fffacd !important; } 
-        .is-double { background-color: #cce7ff !important; } 
-        
-        td.is-holiday, tr td.is-holiday, .is-holiday { 
-            background-color: #2ecc71 !important; 
-            color: #ffffff !important; 
-        } 
-        
-        .col-tot-highlight { background: #ffeeba !important; font-weight: bold; width: 60px; font-size: 12px; }
-        .cell-edit { width: 100%; height: 100%; border: none; text-align: center; font-size: 11px; outline: none; background: transparent; text-transform: uppercase; font-weight: bold; }
-        
-        .pdf-mode .no-pdf { display: none !important; }
-        .pdf-mode .main-controls { display: none !important; }
-        @media print { 
-            body { background: #fff !important; }
-            #capture-area { box-shadow: none; padding: 0; }
-            .main-controls, .staff-controls { display: none !important; } 
-        }
-    </style>
+  .staff-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px dashed #cbd5e1;
+    font-size: 13px;
+  }
+  .staff-controls input, .staff-controls select {
+    padding: 6px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Roster Printable Sheet */
+  .roster-sheet {
+    background: #ffffff;
+    padding: 8px 10px;
+    border: 1px solid #94a3b8;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    width: 100%;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+
+  /* Header Section */
+  .header-card {
+    border: 2px solid #0b62a4;
+    padding: 8px 12px;
+    background: #eef6fc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .editable-hospital-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0b62a4;
+    outline: none;
+    border: 1px dashed transparent;
+    padding: 2px 4px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .editable-hospital-name:hover, .editable-hospital-name:focus {
+    background: #ffffff;
+    border-color: #0b62a4;
+  }
+  .sub-header-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 3px;
+  }
+  .header-info-right {
+    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.4;
+  }
+
+  /* Duty Table */
+  table.roster-grid {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 8px;
+    margin-bottom: 4px;
+    table-layout: fixed;
+  }
+  table.roster-grid th, table.roster-grid td {
+    border: 1px solid #7ea8c9;
+    padding: 0;
+    height: 20px;
+    vertical-align: middle;
+  }
+  table.roster-grid th {
+    background: #d8e8f5;
+    color: #0b62a4;
+    font-weight: 700;
+  }
+  th.sun-header {
+    background: #d92525 !important;
+    color: #ffffff !important;
+  }
+
+  /* Department Section Banner */
+  .dept-banner {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 10px;
+    text-align: left;
+    padding: 4px 8px !important;
+    letter-spacing: 0.5px;
+  }
+  .opd-banner { background: #166534; }
+  .ipd-banner { background: #0b62a4; }
+
+  /* Interactive Cell Inputs */
+  .duty-cell-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 700;
+    font-size: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    padding: 0;
+    margin: 0;
+  }
+  .duty-cell-input:focus {
+    background: #ffffff !important;
+    box-shadow: inset 0 0 0 1.5px #0284c7;
+  }
+
+  /* Staff Name Column */
+  .staff-name-col {
+    text-align: left;
+    padding-left: 6px !important;
+  }
+  .staff-name-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-weight: 700;
+    font-size: 8.5px;
+    padding: 0;
+  }
+  .staff-name-input:focus {
+    border-bottom: 1.5px solid #0b62a4;
+  }
+
+  /* Color Codes */
+  .color-single-white {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    font-weight: 700;
+  }
+  .color-off {
+    background-color: #fff2a8 !important; /* Yellow for OFF */
+    color: #854d0e !important;
+    font-weight: 800;
+  }
+  .color-double {
+    background-color: #bbf2f6 !important; /* Sky Blue for Double Duty */
+    color: #0e7490 !important;
+    font-weight: 800;
+  }
+  .color-gh {
+    background-color: #c3e6cb !important; /* Green for GH / GHD Holiday */
+    color: #166534 !important;
+    font-weight: 800;
+  }
+
+  /* Totals styling */
+  .tot-duty-cell { background: #dcfce7; font-weight: 800; color: #166534; }
+  .tot-off-cell { background: #fef9c3; font-weight: 800; color: #854d0e; }
+  .tot-days-cell { background: #f1f5f9; font-weight: 700; }
+
+  /* Legend and Timings Box */
+  .footer-legend-box {
+    margin-top: 5px;
+    border: 1px solid #7ea8c9;
+    padding: 5px 10px;
+    display: flex;
+    justify-content: space-between;
+    background: #f8fafc;
+    font-size: 8.5px;
+  }
+  .timing-pill {
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 1px 2px;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+  }
+  .legend-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    margin-right: 4px;
+    border-radius: 3px;
+    font-weight: 700;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .auth-signatures {
+    display: flex;
+    justify-content: space-around;
+    width: 38%;
+    text-align: center;
+    font-weight: 700;
+  }
+  .sign-line {
+    outline: none;
+    border-bottom: 1px dashed transparent;
+  }
+  .sign-line:hover, .sign-line:focus {
+    border-bottom-color: #0b62a4;
+  }
+
+  /* Important Note */
+  .note-container {
+    margin-top: 4px;
+    border: 1.5px solid #d92525;
+    padding: 4px 8px;
+    background: #fff8f8;
+    font-size: 8px;
+    line-height: 1.3;
+  }
+  .note-container b { color: #b91c1c; }
+
+  /* Print Media (A4 Landscape) */
+  @media print {
+    .control-panel, #statusToast, #exitModalOverlay { display: none !important; }
+    body { padding: 0; background: #ffffff; }
+    .roster-sheet {
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      width: 100%;
+    }
+    @page {
+      size: A4 landscape;
+      margin: 4mm;
+    }
+    table.roster-grid th, table.roster-grid td {
+      height: 18px;
+      font-size: 7.5px;
+    }
+    .duty-cell-input { font-size: 7.5px; }
+  }
+</style>
 </head>
 <body>
 
-<div class="main-controls no-pdf">
-    <select id="monthSelect" onchange="init()"></select>
-    <select id="yearSelect" onchange="init()"></select>
-    <button class="btn btn-green" onclick="saveData(true)">💾 SAVE</button>
-    <button class="btn btn-blue" onclick="exportExcel()">📊 EXCEL</button>
-    <button class="btn btn-pdf" onclick="downloadPDF()">📄 PDF</button>
-    <button class="btn btn-dark" onclick="resetData()">🔄 RESET</button>
-    <button class="btn btn-purple" onclick="downloadBackupHTML()">📥 OFFLINE</button>
-    <button class="btn btn-wa" onclick="shareWhatsApp()">📱 WA</button>
-    <button class="btn btn-red" onclick="window.print()">🖨️ PRINT</button>
-</div>
+<div id="statusToast"></div>
 
-<div id="capture-area">
-    <div class="header-container">
-        <div class="tcil-logo-css"></div>
-        <div class="header-text">
-            <h1 contenteditable="true" id="hospName" oninput="saveData(false)">TIBBIA HOSPITAL</h1>
-            <p id="hospLoc" contenteditable="true" style="margin: 2px 0;" oninput="saveData(false)">KAROL BAGH, NEW DELHI</p>
-            <p style="text-decoration: underline; font-weight: bold; margin: 2px 0;">OPD & IPD ATTENDANCE ROSTER - <span id="displayMonthYear"></span></p>
-        </div>
-        <div class="cs-logo-css">
-            <p class="top-text">Chandrika</p>
-            <p class="bottom-text">SOLUTIONS</p>
-        </div>
+<!-- CUSTOM IN-APP EXIT CONFIRMATION MODAL -->
+<div id="exitModalOverlay">
+  <div class="exit-modal-box">
+    <div style="font-size: 32px; margin-bottom: 6px;">🚪</div>
+    <h3 style="margin: 0; color: #0b62a4; font-size: 17px;">रोस्टर से बाहर निकलना चाहते हैं?</h3>
+    <p style="font-size: 13px; color: #475569; margin: 12px 0 22px 0; line-height: 1.5;">
+      क्या आप बंद करने से पहले इस महीने की ड्यूटियाँ <b>सेव (Save)</b> करना चाहते हैं?
+    </p>
+    <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+      <button class="btn-save" style="background: #16a34a; padding: 9px 15px;" onclick="saveAndExitApp()">💾 Save &amp; Exit</button>
+      <button class="btn-del-action" style="padding: 9px 15px;" onclick="dontSaveAndExitApp()">❌ Don't Save</button>
+      <button class="btn-reset" style="padding: 9px 15px;" onclick="closeExitModal()">रद्द करें (Cancel)</button>
     </div>
-    <div id="tablesContainer"></div>
+  </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- TOP CONTROL PANEL -->
+<div class="control-panel">
+  <div class="panel-header">
+    <div class="app-title">
+      <span>🏥</span> Tibbia Hospital Duty Roster Pro
+    </div>
+    <div class="action-buttons">
+      <button class="btn-pdf" onclick="safeExecute(downloadPdfDirect)">📄 Download PDF</button>
+      <button class="btn-print" onclick="window.print()">🖨️ Print Sheet</button>
+      <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
+      <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
+      <button class="btn-save" onclick="safeExecute(manualSave)">💾 Save Data</button>
+      <button class="btn-exit" onclick="openExitModal()">🚪 Exit / Close</button>
+      <button class="btn-backup" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
+      <button class="btn-reset" onclick="safeExecute(resetDefaultRoster)">🔄 Reset Default</button>
+    </div>
+  </div>
+
+  <div class="staff-controls">
+    <div class="control-group">
+      <b>Month:</b>
+      <select id="monthSelect" onchange="safeExecute(onDateConfigChange)">
+        <option value="0">January</option>
+        <option value="1">February</option>
+        <option value="2">March</option>
+        <option value="3">April</option>
+        <option value="4">May</option>
+        <option value="5">June</option>
+        <option value="6">July</option>
+        <option value="7">August</option>
+        <option value="8">September</option>
+        <option value="9">October</option>
+        <option value="10">November</option>
+        <option value="11">December</option>
+      </select>
+
+      <b>Year:</b>
+      <select id="yearSelect" onchange="safeExecute(onDateConfigChange)">
+        <!-- Populated up to 2035 -->
+      </select>
+    </div>
+
+    <div class="control-group" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
+      <b>Add:</b>
+      <select id="targetDept">
+        <option value="OPD">OPD Registration</option>
+        <option value="IPD">IPD Registration</option>
+      </select>
+      <input type="text" id="inputStaffName" placeholder="Employee Name" style="width: 140px;">
+      <button class="btn-add" onclick="safeExecute(addEmployee)">➕ Add Name</button>
+    </div>
+
+    <div class="control-group" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
+      <b>Delete:</b>
+      <select id="deleteDept" onchange="safeExecute(populateDeleteDropdown)">
+        <option value="OPD">OPD Registration</option>
+        <option value="IPD">IPD Registration</option>
+      </select>
+      <select id="deleteStaffSelect" style="width: 140px;">
+        <!-- Filled by JS -->
+      </select>
+      <button class="btn-del-action" onclick="safeExecute(deleteSelectedEmployee)">🗑️ Delete Name</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINTABLE ROSTER SHEET -->
+<div class="roster-sheet" id="printArea">
+
+  <!-- HOSPITAL HEADER (EDITABLE) -->
+  <div class="header-card">
+    <div>
+      <div class="editable-hospital-name" id="hospitalNameDisplay" contenteditable="true" oninput="markUnsavedAndDebounce()" title="Click to edit Hospital Name">
+        AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005
+      </div>
+      <div class="sub-header-title">MONTHLY DUTY ROSTER - OPD &amp; IPD REGISTRATION DEPARTMENTS</div>
+    </div>
+    <div class="header-info-right">
+      <span id="monthYearBadge" style="color:#0b62a4; font-size:11px;">MONTH: SEPTEMBER 2026</span><br>
+      Total Days: <span id="daysCountBadge">30</span> &nbsp;|&nbsp; Coverage: 24x7 (3 Shifts)
+    </div>
+  </div>
+
+  <!-- TABLE CONTAINER (WITH FIXED COLUMNS AND CLEAN HEADERS) -->
+  <table class="roster-grid" id="mainTable">
+    <colgroup id="tableColGroup"></colgroup>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <!-- FOOTER LEGEND, SHIFT TIMINGS & SIGNATURES -->
+  <div class="footer-legend-box">
+    <div style="line-height: 1.7; max-width: 60%;">
+      <b>SHIFT TIMINGS:</b><br>
+      <b>IPD Timings:</b> 
+      <span class="timing-pill">Morning: 06:00 AM - 02:00 PM</span>
+      <span class="timing-pill">Evening: 02:00 PM - 10:00 PM</span>
+      <span class="timing-pill">Night: 10:00 PM - 06:00 AM</span><br>
+
+      <b>COLOR CODE:</b>
+      <span class="legend-tag color-single-white">Single Duty = White</span>
+      <span class="legend-tag color-off">OFF = Yellow</span>
+      <span class="legend-tag color-double">Double Duty = Sky Blue (Counts 2)</span>
+      <span class="legend-tag color-gh">GH / GHD = Green (Counts 1)</span>
+    </div>
+
+    <div class="auth-signatures">
+      <div>
+        <br>___________________<br>
+        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Rinku</b></span><br>Prepared By
+      </div>
+      <div>
+        <br>___________________<br>
+        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Sushil</b></span><br>Verified By
+      </div>
+      <div>
+        <br>___________________<br>
+        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Chandra Bhan Sir</b></span><br>Incharge
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTANT NOTE -->
+  <div class="note-container">
+    <b>महत्वपूर्ण निर्देश / IMPORTANT NOTE:</b><br>
+    सभी कर्मचारी अपनी निर्धारित शिफ्ट के अनुसार समय पर उपस्थित होना सुनिश्चित करें। ड्यूटी में बिना पूर्व सूचना के कोई भी फेरबदल पूरी तरह प्रतिबंधित है। किसी भी प्रकार के संशय या समस्या की स्थिति में सीधे विभाग प्रभारी से संपर्क किया जा सकता है।<br>
+    <i>All staff members must strictly adhere to their designated shift timings. Any unauthorized absence or mutual shift exchange without prior written approval is strictly prohibited. In case of any operational issues, employees, or attendance, the concerned staff member will be solely and personally held responsible.</i>
+  </div>
+
+</div>
 
 <script>
-    const monthsArr = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const daysArr = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const doubleShifts = ["M+E", "E+M", "N+M", "M+N", "E+N", "N+E"];
-    const holidayCodes = ["G/H/D", "GH", "GHD", "H", "PH", "G/H"];
+const STORAGE_KEY = "tibbia_duty_roster_monthly_isolated_v10";
+const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-    window.onload = function() {
-        populateSelectors();
-        init();
+const now = new Date();
+let currentYear = now.getFullYear();
+let currentMonth = now.getMonth();
+
+let hasUnsavedChanges = false;
+
+let appDatabase = {
+  hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
+  staffDirectory: {
+    opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
+    ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
+  },
+  monthlyDuties: {}
+};
+
+function getMonthKey(year, month) {
+  return `${year}-${month}`;
+}
+
+function ensureMonthData(year, month) {
+  const mKey = getMonthKey(year, month);
+  if (!appDatabase.monthlyDuties[mKey]) {
+    appDatabase.monthlyDuties[mKey] = {
+      opd: {},
+      ipd: {}
     };
+  }
 
-    function populateSelectors() {
-        const yrSelect = document.getElementById('yearSelect');
-        const moSelect = document.getElementById('monthSelect');
-        if(!yrSelect || !moSelect) return;
-        
-        yrSelect.innerHTML = "";
-        moSelect.innerHTML = "";
-        
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
+  ['opd', 'ipd'].forEach(dept => {
+    appDatabase.staffDirectory[dept].forEach(empName => {
+      if (!appDatabase.monthlyDuties[mKey][dept][empName]) {
+        appDatabase.monthlyDuties[mKey][dept][empName] = Array(31).fill("");
+      }
+    });
+  });
+}
 
-        monthsArr.forEach((m, i) => {
-            let opt = document.createElement('option');
-            opt.value = i;
-            opt.text = m;
-            if(i === currentMonth) opt.selected = true;
-            moSelect.appendChild(opt);
-        });
+function safeExecute(fn, ...args) {
+  try {
+    return fn(...args);
+  } catch (err) {
+    console.error("Safely caught:", err);
+    showToast("⚠️ ऑपरेशन सुरक्षित रूप से संभाला गया।");
+  }
+}
 
-        for(let i = 2024; i <= 2035; i++) {
-            let opt = document.createElement('option');
-            opt.value = i;
-            opt.text = i;
-            if(i === currentYear) opt.selected = true;
-            yrSelect.appendChild(opt);
-        }
+function showToast(msg) {
+  const toast = document.getElementById("statusToast");
+  if (!toast) return;
+  toast.innerText = msg;
+  toast.style.display = "block";
+  toast.style.opacity = "1";
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => { toast.style.display = "none"; }, 300);
+  }, 2800);
+}
+
+function loadSavedDatabase() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.staffDirectory && parsed.monthlyDuties) {
+        appDatabase = parsed;
+        return;
+      }
     }
+  } catch (err) {
+    console.warn("Storage parsed safely:", err);
+  }
+}
 
-    function init() {
-        const yrElem = document.getElementById('yearSelect');
-        const moElem = document.getElementById('monthSelect');
-        if(!yrElem || !moElem) return;
-        
-        const year = parseInt(yrElem.value);
-        const month = parseInt(moElem.value);
-        if(isNaN(year) || isNaN(month)) return;
+// BROWSER LEVEL EXIT PROTECTION
+window.addEventListener("beforeunload", function (e) {
+  if (hasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = "आपने ड्यूटी में बदलाव किए हैं। क्या आप बाहर जाने से पहले सेव करना चाहते हैं?";
+    return e.returnValue;
+  }
+});
 
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        document.getElementById('displayMonthYear').innerText = monthsArr[month] + " " + year;
-        
-        document.getElementById('tablesContainer').innerHTML = `
-            ${createTableHTML("OPD REGISTRATION", "opd", daysInMonth)}
-            ${createTableHTML("IPD REGISTRATION", "ipd", daysInMonth)}
-        `;
-        renderHeaders("opd", year, month, daysInMonth);
-        renderHeaders("ipd", year, month, daysInMonth);
-        loadData(daysInMonth);
-        updateDropdowns();
+// IN-APP EXIT MODAL
+function openExitModal() {
+  document.getElementById("exitModalOverlay").style.display = "flex";
+}
+
+function closeExitModal() {
+  document.getElementById("exitModalOverlay").style.display = "none";
+}
+
+function saveAndExitApp() {
+  saveDatabase(false);
+  hasUnsavedChanges = false;
+  closeExitModal();
+  alert("✅ ड्यूटी सेव हो गई है! अब आप सुरक्षित रूप से पेज बंद कर सकते हैं।");
+  window.close();
+}
+
+function dontSaveAndExitApp() {
+  hasUnsavedChanges = false;
+  closeExitModal();
+  loadSavedDatabase();
+  renderRosterView();
+  showToast("❌ बिना सेव किए बदलाव रद्द कर दिए गए!");
+}
+
+let autoSaveTimer = null;
+function markUnsavedAndDebounce() {
+  hasUnsavedChanges = true;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    safeExecute(saveDatabase, false);
+    hasUnsavedChanges = false;
+  }, 500);
+}
+
+// SAVE FUNCTION WITH EXPLICIT DIALOG ALERT
+function saveDatabase(showAlertPopup = true) {
+  const hName = document.getElementById("hospitalNameDisplay").innerText.trim();
+  if (hName) appDatabase.hospitalTitle = hName;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appDatabase));
+  hasUnsavedChanges = false;
+  
+  if (showAlertPopup) {
+    alert("✅ ड्यूटी सफलतापूर्वक सेव हो गई है! (Duty Saved Successfully)");
+    showToast("✅ ड्यूटी सेव हो गई है!");
+  }
+}
+
+function manualSave() {
+  saveDatabase(true);
+}
+
+function downloadJsonBackup() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appDatabase, null, 2));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", `Tibbia_Hospital_Full_Database_Backup_${currentYear}.json`);
+  dlAnchor.click();
+  showToast("📥 पूरा डेटाबेस बैकअप डाउनलोड हो गया है!");
+}
+
+function resetDefaultRoster() {
+  if (confirm("क्या आप प्रारंभिक डिफॉल्ट रोस्टर डेटा वापस लाना चाहते हैं? (सभी महीनों की ड्यूटी खाली हो जाएगी)")) {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+}
+
+function populateYearSelect() {
+  const ySelect = document.getElementById("yearSelect");
+  ySelect.innerHTML = "";
+  for (let y = 2024; y <= 2035; y++) {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.text = y;
+    if (y === currentYear) opt.selected = true;
+    ySelect.appendChild(opt);
+  }
+  document.getElementById("monthSelect").value = currentMonth;
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function onDateConfigChange() {
+  if (hasUnsavedChanges) {
+    if (confirm("आपने इस महीने में बदलाव किए हैं। क्या आप अगला महीना चुनने से पहले इसे सेव करना चाहते हैं?")) {
+      saveDatabase(false);
     }
+  }
 
-    function createTableHTML(title, id, days) {
-        return `
-            <div class="section-header" style="background:#1e3a8a; color:white; padding:5px 10px; font-weight:bold; display:flex; justify-content:space-between; margin-top:10px; border-radius: 3px 3px 0 0;">
-                ${title}
-                <div class="staff-controls no-pdf">
-                    <input type="text" id="${id}In" placeholder="NAME" style="font-size:10px; width: 70px;">
-                    <button class="btn btn-purple" style="padding: 2px 5px;" onclick="addStaff('${id}Body', '${id}In')">ADD</button>
-                    <select id="${id}DelSelect" style="font-size:10px; color:#000; background:#fff;"><option value="">DEL</option></select>
-                    <button class="btn btn-orange" style="padding: 2px 5px;" onclick="deleteSelectedStaff('${id}Body', '${id}DelSelect')">OK</button>
-                </div>
-            </div>
-            <table id="${id}Table"><thead><tr id="${id}Dates"></tr><tr id="${id}Days"></tr></thead><tbody id="${id}Body"></tbody></table>`;
+  currentMonth = parseInt(document.getElementById("monthSelect").value);
+  currentYear = parseInt(document.getElementById("yearSelect").value);
+  ensureMonthData(currentYear, currentMonth);
+  renderRosterView();
+  showToast(`📅 ${MONTH_NAMES[currentMonth]} ${currentYear} का रोस्टर लोड हुआ`);
+}
+
+function setupColGroup(numDays) {
+  const colGroup = document.getElementById("tableColGroup");
+  let cgHtml = `<col style="width: 22px;">`;
+  cgHtml += `<col style="width: 120px;">`;
+  for (let d = 1; d <= numDays; d++) {
+    cgHtml += `<col style="width: 21px;">`;
+  }
+  cgHtml += `<col style="width: 36px;">`;
+  cgHtml += `<col style="width: 34px;">`;
+  cgHtml += `<col style="width: 34px;">`;
+  colGroup.innerHTML = cgHtml;
+}
+
+function renderRosterView() {
+  const numDays = getDaysInMonth(currentYear, currentMonth);
+  document.getElementById("daysCountBadge").innerText = numDays;
+  document.getElementById("monthYearBadge").innerText = `MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`;
+  setupColGroup(numDays);
+  buildTable(numDays);
+}
+
+function generateHeaderRowHtml(numDays, deptName) {
+  let dHtml = `<tr style="background:#d8e8f5; height:19px;">`;
+  dHtml += `<th style="font-size:7.5px;">#</th>`;
+  dHtml += `<th style="text-align:left; padding-left:6px; font-size:8px;">STAFF NAME</th>`;
+
+  for (let d = 1; d <= numDays; d++) {
+    const dateObj = new Date(currentYear, currentMonth, d);
+    const dayName = DAYS_OF_WEEK[dateObj.getDay()];
+    const isSunday = (dayName === "SUN") ? "sun-header" : "";
+    dHtml += `<th class="${isSunday}">${d}</th>`;
+  }
+
+  dHtml += `<th style="background:#dcfce7; color:#166534; font-size:7.5px;">DUTY</th>`;
+  dHtml += `<th style="background:#fef9c3; color:#854d0e; font-size:7.5px;">OFF</th>`;
+  dHtml += `<th style="font-size:7.5px;">TOTAL</th>`;
+  dHtml += `</tr>`;
+
+  let dayHtml = `<tr style="background:#eef6fc; height:18px;">`;
+  dayHtml += `<th style="font-size:7px; color:#64748b;">NO.</th>`;
+  dayHtml += `<th style="text-align:left; padding-left:6px; font-size:7px; color:#64748b;">EMPLOYEE</th>`;
+
+  for (let d = 1; d <= numDays; d++) {
+    const dateObj = new Date(currentYear, currentMonth, d);
+    const dayName = DAYS_OF_WEEK[dateObj.getDay()];
+    const isSunday = (dayName === "SUN") ? "sun-header" : "";
+    dayHtml += `<th class="${isSunday}" style="font-size:7px;">${dayName}</th>`;
+  }
+
+  dayHtml += `<th style="background:#dcfce7; color:#166534; font-size:7px;">DAYS</th>`;
+  dayHtml += `<th style="background:#fef9c3; color:#854d0e; font-size:7px;">DAYS</th>`;
+  dayHtml += `<th style="font-size:7px; color:#64748b;">DAYS</th>`;
+  dayHtml += `</tr>`;
+
+  return dHtml + dayHtml;
+}
+
+function parseDutyCode(code) {
+  if (!code) return { duty: 0, off: 0, cls: "" };
+  const str = code.trim().toUpperCase();
+
+  if (str.includes("+") || ["MN", "NM", "NE", "EN", "ME", "EM"].includes(str)) {
+    return { duty: 2, off: 0, cls: "color-double" };
+  }
+  if (str === "GH" || str === "GHD") {
+    return { duty: 1, off: 0, cls: "color-gh" };
+  }
+  if (str === "OFF" || str === "WO" || str === "W/O") {
+    return { duty: 0, off: 1, cls: "color-off" };
+  }
+  return { duty: 1, off: 0, cls: "color-single-white" };
+}
+
+function buildTable(numDays) {
+  const tbody = document.getElementById("tableBody");
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const currentMonthData = appDatabase.monthlyDuties[mKey];
+
+  let html = "";
+
+  // 1. OPD REGISTRATION SECTION
+  html += `<tr><td colspan="${numDays + 5}" class="dept-banner opd-banner">1. OPD REGISTRATION DEPARTMENT</td></tr>`;
+  html += generateHeaderRowHtml(numDays, "OPD");
+  appDatabase.staffDirectory.opd.forEach((staffName, idx) => {
+    const dutiesArr = currentMonthData.opd[staffName] || Array(31).fill("");
+    html += buildStaffRow("opd", idx, staffName, dutiesArr, numDays);
+  });
+
+  html += `<tr><td colspan="${numDays + 5}" style="height:6px; background:#f1f5f9; border-left:none; border-right:none;"></td></tr>`;
+
+  // 2. IPD REGISTRATION SECTION
+  html += `<tr><td colspan="${numDays + 5}" class="dept-banner ipd-banner">2. IPD REGISTRATION DEPARTMENT</td></tr>`;
+  html += generateHeaderRowHtml(numDays, "IPD");
+  appDatabase.staffDirectory.ipd.forEach((staffName, idx) => {
+    const dutiesArr = currentMonthData.ipd[staffName] || Array(31).fill("");
+    html += buildStaffRow("ipd", idx, staffName, dutiesArr, numDays);
+  });
+
+  tbody.innerHTML = html;
+  recomputeTotals(numDays);
+  populateDeleteDropdown();
+}
+
+function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
+  let row = `<tr>`;
+  row += `<td>${idx + 1}</td>`;
+  row += `<td class="staff-name-col">
+            <input type="text" class="staff-name-input" value="${staffName}" onchange="modifyStaffName('${dept}', ${idx}, this.value)">
+          </td>`;
+
+  for (let d = 0; d < numDays; d++) {
+    const val = dutiesArr[d] || "";
+    const res = parseDutyCode(val);
+    row += `<td class="${res.cls}">
+              <input type="text" class="duty-cell-input" value="${val}" 
+                oninput="onDutyInput(this, '${dept}', '${staffName}', ${d})" 
+                onblur="recomputeTotals(${numDays})">
+            </td>`;
+  }
+
+  row += `<td id="${dept}_tot_duty_${idx}" class="tot-duty-cell">0</td>`;
+  row += `<td id="${dept}_tot_off_${idx}" class="tot-off-cell">0</td>`;
+  row += `<td id="${dept}_tot_days_${idx}" class="tot-days-cell">${numDays}</td>`;
+  row += `</tr>`;
+  return row;
+}
+
+function onDutyInput(elem, dept, staffName, dayIdx) {
+  const upperVal = elem.value.toUpperCase();
+  elem.value = upperVal;
+
+  const mKey = getMonthKey(currentYear, currentMonth);
+  if (!appDatabase.monthlyDuties[mKey][dept][staffName]) {
+    appDatabase.monthlyDuties[mKey][dept][staffName] = Array(31).fill("");
+  }
+  appDatabase.monthlyDuties[mKey][dept][staffName][dayIdx] = upperVal;
+
+  const res = parseDutyCode(upperVal);
+  elem.parentElement.className = res.cls;
+  markUnsavedAndDebounce();
+}
+
+function recomputeTotals(numDays) {
+  if (!numDays) numDays = getDaysInMonth(currentYear, currentMonth);
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const monthData = appDatabase.monthlyDuties[mKey];
+
+  ["opd", "ipd"].forEach(dept => {
+    appDatabase.staffDirectory[dept].forEach((staffName, idx) => {
+      const dutiesArr = (monthData && monthData[dept] && monthData[dept][staffName]) ? monthData[dept][staffName] : [];
+      let totalDuty = 0;
+      let totalOff = 0;
+      for (let d = 0; d < numDays; d++) {
+        const val = dutiesArr[d] || "";
+        const res = parseDutyCode(val);
+        totalDuty += res.duty;
+        totalOff += res.off;
+      }
+      const dutyCell = document.getElementById(`${dept}_tot_duty_${idx}`);
+      const offCell = document.getElementById(`${dept}_tot_off_${idx}`);
+      if (dutyCell) dutyCell.innerText = totalDuty;
+      if (offCell) offCell.innerText = totalOff;
+    });
+  });
+}
+
+function modifyStaffName(dept, idx, newName) {
+  const oldName = appDatabase.staffDirectory[dept][idx];
+  const cleaned = newName.trim().toUpperCase();
+  if (!cleaned || cleaned === oldName) return;
+
+  appDatabase.staffDirectory[dept][idx] = cleaned;
+
+  Object.keys(appDatabase.monthlyDuties).forEach(mKey => {
+    if (appDatabase.monthlyDuties[mKey][dept] && appDatabase.monthlyDuties[mKey][dept][oldName]) {
+      appDatabase.monthlyDuties[mKey][dept][cleaned] = appDatabase.monthlyDuties[mKey][dept][oldName];
+      delete appDatabase.monthlyDuties[mKey][dept][oldName];
     }
+  });
 
-    function renderHeaders(id, year, month, totalDays) {
-        const dRow = document.getElementById(id + 'Dates');
-        const dyRow = document.getElementById(id + 'Days');
-        if(!dRow || !dyRow) return;
-        dRow.innerHTML = '<td class="row-label">DATE</td>';
-        dyRow.innerHTML = '<td class="row-label">DAY</td>';
-        for(let i=1; i<=totalDays; i++) {
-            let dayName = daysArr[new Date(year, month, i).getDay()];
-            let sunClass = (dayName === "SUN") ? 'class="sunday-col"' : '';
-            dRow.innerHTML += `<td ${sunClass}>${i}</td>`;
-            dyRow.innerHTML += `<td ${sunClass} style="font-size:9px;">${dayName}</td>`;
-        }
-        dRow.innerHTML += `<td class="col-tot-highlight">TOT</td>`;
-        dyRow.innerHTML += `<td class="col-tot-highlight" style="font-size:10px;">DUTY</td>`;
+  populateDeleteDropdown();
+  markUnsavedAndDebounce();
+}
+
+function addEmployee() {
+  const dept = document.getElementById("targetDept").value.toLowerCase();
+  const nameInput = document.getElementById("inputStaffName");
+  const name = nameInput.value.trim().toUpperCase();
+  if (!name) {
+    alert("कृपया कर्मचारी का नाम भरें!");
+    return;
+  }
+  if (appDatabase.staffDirectory[dept].includes(name)) {
+    alert("यह कर्मचारी पहले से सूची में मौजूद है!");
+    return;
+  }
+  appDatabase.staffDirectory[dept].push(name);
+  ensureMonthData(currentYear, currentMonth);
+
+  nameInput.value = "";
+  renderRosterView();
+  markUnsavedAndDebounce();
+  showToast(`✅ ${name} को ${dept.toUpperCase()} में जोड़ दिया गया!`);
+}
+
+function populateDeleteDropdown() {
+  const dept = document.getElementById("deleteDept").value.toLowerCase();
+  const sel = document.getElementById("deleteStaffSelect");
+  sel.innerHTML = "";
+  appDatabase.staffDirectory[dept].forEach((sName, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.text = `${i + 1}. ${sName}`;
+    sel.appendChild(opt);
+  });
+}
+
+function deleteSelectedEmployee() {
+  const dept = document.getElementById("deleteDept").value.toLowerCase();
+  const sel = document.getElementById("deleteStaffSelect");
+  const idx = parseInt(sel.value);
+  if (isNaN(idx) || !appDatabase.staffDirectory[dept][idx]) {
+    alert("हटाने के लिए कोई कर्मचारी उपलब्ध नहीं है!");
+    return;
+  }
+  const empName = appDatabase.staffDirectory[dept][idx];
+  if (confirm(`क्या आप "${empName}" को ${dept.toUpperCase()} रोस्टर से हटाना चाहते हैं?`)) {
+    appDatabase.staffDirectory[dept].splice(idx, 1);
+    Object.keys(appDatabase.monthlyDuties).forEach(mKey => {
+      if (appDatabase.monthlyDuties[mKey][dept]) {
+        delete appDatabase.monthlyDuties[mKey][dept][empName];
+      }
+    });
+
+    renderRosterView();
+    markUnsavedAndDebounce();
+    showToast(`🗑️ ${empName} को रोस्टर से हटा दिया गया!`);
+  }
+}
+
+// ULTRA HD 300 DPI CRISP PDF DOWNLOAD
+function downloadPdfDirect() {
+  showToast("⏳ Ultra HD PDF तैयार हो रही है (300 DPI)...");
+  const element = document.getElementById('printArea');
+  const monthName = MONTH_NAMES[currentMonth];
+
+  const opt = {
+    margin: [2, 2, 2, 2],
+    filename: `Tibbia_Hospital_Duty_Roster_${monthName}_${currentYear}_UltraHD.pdf`,
+    image: { type: 'jpeg', quality: 1.0 },
+    html2canvas: { 
+      scale: 3.5,
+      useCORS: true, 
+      scrollY: 0,
+      scrollX: 0,
+      letterRendering: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    },
+    jsPDF: { 
+      unit: 'mm', 
+      format: 'a4', 
+      orientation: 'landscape',
+      compress: true
     }
+  };
 
-    function handleLogic(input) {
-        const val = input.value.toUpperCase().trim();
-        const cell = input.parentElement;
-        
-        cell.classList.remove('is-off', 'is-double', 'is-holiday');
-        
-        if (holidayCodes.includes(val)) {
-            cell.classList.add('is-holiday');
-        } else if (val === "OFF") {
-            cell.classList.add('is-off');
-        } else if (doubleShifts.includes(val)) {
-            cell.classList.add('is-double');
-        }
+  html2pdf().set(opt).from(element).save().then(() => {
+    showToast("✅ Ultra HD PDF सफलतापूर्वक डाउनलोड हो गई!");
+  }).catch((err) => {
+    console.error("PDF engine fallback:", err);
+    window.print();
+  });
+}
 
-        const row = input.closest('tr');
-        const attendanceInputs = row.querySelectorAll('.attendance-input');
-        let totalDuty = 0;
-        attendanceInputs.forEach(i => {
-            let v = i.value.toUpperCase().trim();
-            if (doubleShifts.includes(v)) {
-                totalDuty += 2;
-            } else if (["M", "E", "N", "P", "GH", "GHD", "G/H/D", "H", "PH", "G/H"].includes(v)) {
-                totalDuty += 1;
-            }
-        });
-        row.querySelector('.total-display').value = totalDuty;
-        saveData(false);
+// WhatsApp Share
+function shareToWhatsApp() {
+  const hName = document.getElementById("hospitalNameDisplay").innerText.trim();
+  const monthName = MONTH_NAMES[currentMonth];
+  const numDays = getDaysInMonth(currentYear, currentMonth);
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = appDatabase.monthlyDuties[mKey];
+
+  let textSummary = `*🏥 ${hName}*\n`;
+  textSummary += `*📋 MONTHLY DUTY ROSTER - ${monthName} ${currentYear}*\n`;
+  textSummary += `Days: ${numDays} | Coverage: 24x7\n\n`;
+
+  textSummary += `*1. OPD REGISTRATION DEPARTMENT*\n`;
+  appDatabase.staffDirectory.opd.forEach((sName, i) => {
+    const dArr = (mData && mData.opd && mData.opd[sName]) ? mData.opd[sName] : [];
+    let dCount = 0, offCount = 0;
+    for(let d=0; d<numDays; d++){
+      const res = parseDutyCode(dArr[d] || "");
+      dCount += res.duty; offCount += res.off;
     }
+    textSummary += `${i+1}. ${sName} - Duty: ${dCount}, OFF: ${offCount}\n`;
+  });
 
-    function addStaffRow(bodyId, name, existingData = null, daysCount = 31) {
-        const body = document.getElementById(bodyId);
-        if(!body) return;
-        let row = document.createElement('tr');
-        let html = `<td class="row-label">${name}</td>`;
-        const year = parseInt(document.getElementById('yearSelect').value);
-        const month = parseInt(document.getElementById('monthSelect').value);
-        for(let i=1; i<=daysCount; i++) {
-            let dayName = daysArr[new Date(year, month, i).getDay()];
-            let sunClass = (dayName === "SUN") ? 'sunday-col' : '';
-            let val = (existingData && existingData[i-1]) ? existingData[i-1] : "";
-            html += `<td class="${sunClass}"><input class="cell-edit attendance-input" type="text" value="${val}" oninput="handleLogic(this)"></td>`;
-        }
-        html += `<td class="col-tot-highlight"><input class="cell-edit total-display" type="text" readonly></td>`;
-        row.innerHTML = html;
-        body.appendChild(row);
-        row.querySelectorAll('.attendance-input').forEach(i => handleLogic(i));
+  textSummary += `\n*2. IPD REGISTRATION DEPARTMENT*\n`;
+  appDatabase.staffDirectory.ipd.forEach((sName, i) => {
+    const dArr = (mData && mData.ipd && mData.ipd[sName]) ? mData.ipd[sName] : [];
+    let dCount = 0, offCount = 0;
+    for(let d=0; d<numDays; d++){
+      const res = parseDutyCode(dArr[d] || "");
+      dCount += res.duty; offCount += res.off;
     }
+    textSummary += `${i+1}. ${sName} - Duty: ${dCount}, OFF: ${offCount}\n`;
+  });
 
-    function addStaff(bodyId, inputId) {
-        const nameInput = document.getElementById(inputId);
-        if(!nameInput) return;
-        const name = nameInput.value;
-        const days = new Date(document.getElementById('yearSelect').value, parseInt(document.getElementById('monthSelect').value) + 1, 0).getDate();
-        if(name) { 
-            addStaffRow(bodyId, name.toUpperCase(), null, days); 
-            nameInput.value = ""; 
-            updateDropdowns(); 
-            saveData(true); 
-        }
+  textSummary += `\n_IPD Shift Timings: Morning 06:00 AM-02:00 PM | Evening 02:00 PM-10:00 PM | Night 10:00 PM-06:00 AM_\n`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: `${hName} - Duty Roster`,
+      text: textSummary
+    }).catch(() => {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textSummary)}`, '_blank');
+    });
+  } else {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textSummary)}`, '_blank');
+  }
+}
+
+// Excel Export
+function exportDutyRosterToExcel() {
+  const numDays = getDaysInMonth(currentYear, currentMonth);
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = appDatabase.monthlyDuties[mKey];
+
+  const wb = XLSX.utils.book_new();
+  const data = [];
+
+  const hName = document.getElementById("hospitalNameDisplay").innerText.trim();
+  data.push([hName]);
+  data.push(["MONTHLY DUTY ROSTER - OPD & IPD REGISTRATION DEPARTMENTS"]);
+  data.push([`MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`, `Total Days: ${numDays}`, "Coverage: 24x7 (3 Shifts)"]);
+  data.push([]);
+
+  function getHeaderRows() {
+    const r1 = ["#", "STAFF NAME"];
+    const r2 = ["", ""];
+    for (let d = 1; d <= numDays; d++) {
+      r1.push(d);
+      const dateObj = new Date(currentYear, currentMonth, d);
+      r2.push(DAYS_OF_WEEK[dateObj.getDay()]);
     }
+    r1.push("TOTAL DUTY", "TOTAL OFF", "TOTAL DAYS");
+    r2.push("", "", "");
+    return [r1, r2];
+  }
 
-    function deleteSelectedStaff(bodyId, selectId) {
-        const select = document.getElementById(selectId);
-        if(select && select.value !== "" && confirm("Delete staff?")) { 
-            document.getElementById(bodyId).deleteRow(select.value); 
-            updateDropdowns(); 
-            saveData(true); 
-        }
-    }
+  function appendSection(title, deptKey, list) {
+    data.push([title]);
+    const [r1, r2] = getHeaderRows();
+    data.push(r1);
+    data.push(r2);
+    list.forEach((sName, i) => {
+      const row = [i + 1, sName];
+      const dArr = (mData && mData[deptKey] && mData[deptKey][sName]) ? mData[deptKey][sName] : [];
+      let dCount = 0;
+      let offCount = 0;
+      for (let d = 0; d < numDays; d++) {
+        const val = dArr[d] || "";
+        row.push(val);
+        const res = parseDutyCode(val);
+        dCount += res.duty;
+        offCount += res.off;
+      }
+      row.push(dCount, offCount, numDays);
+      data.push(row);
+    });
+    data.push([]);
+  }
 
-    function updateDropdowns() {
-        ['opdBody','ipdBody'].forEach(id => {
-            const selectId = id.replace('Body','DelSelect');
-            const select = document.getElementById(selectId);
-            const body = document.getElementById(id);
-            if(select && body) {
-                select.innerHTML = '<option value="">DEL</option>';
-                body.querySelectorAll('tr').forEach((tr, i) => select.add(new Option(tr.cells[0].innerText.trim(), i)));
-            }
-        });
-    }
+  appendSection("1. OPD REGISTRATION DEPARTMENT", "opd", appDatabase.staffDirectory.opd);
+  appendSection("2. IPD REGISTRATION DEPARTMENT", "ipd", appDatabase.staffDirectory.ipd);
 
-    function getStorageKey() {
-        const yr = document.getElementById('yearSelect');
-        const mo = document.getElementById('monthSelect');
-        let year = yr ? yr.value : new Date().getFullYear();
-        let month = mo ? mo.value : new Date().getMonth();
-        return `RosterData_${year}_${month}`;
-    }
+  data.push(["IPD SHIFT TIMINGS:", "Morning: 06:00 AM - 02:00 PM | Evening: 02:00 PM - 10:00 PM | Night: 10:00 PM - 06:00 AM | OFF: Weekly Off"]);
+  data.push(["RULES:", "Single Duty = White | Double Duty = Sky Blue (Counts 2) | GH / GHD = Green (Counts 1) | OFF = Yellow"]);
 
-    function saveData(showAlert = false) {
-        try {
-            const key = getStorageKey();
-            const data = { 
-                hosp: document.getElementById('hospName').innerText, 
-                loc: document.getElementById('hospLoc').innerText,
-                opd: Array.from(document.getElementById('opdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)})),
-                ipd: Array.from(document.getElementById('ipdBody').querySelectorAll('tr')).map(tr => ({name: tr.cells[0].innerText.trim(), data: Array.from(tr.querySelectorAll('.attendance-input')).map(i => i.value)}))
-            };
-            localStorage.setItem(key, JSON.stringify(data));
-            if(showAlert) alert("Data Saved Successfully!");
-        } catch(e) {
-            console.error(e);
-        }
-    }
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, "Duty_Roster");
+  XLSX.writeFile(wb, `Tibbia_Hospital_Duty_Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.xlsx`);
+  showToast("📊 एक्सेल फाइल सफलता पूर्वक डाउनलोड हो गई!");
+}
 
-    function loadData(days) {
-        const key = getStorageKey();
-        const saved = localStorage.getItem(key);
-        const opdBody = document.getElementById('opdBody');
-        const ipdBody = document.getElementById('ipdBody');
-        if(!opdBody || !ipdBody) return;
-        
-        opdBody.innerHTML = "";
-        ipdBody.innerHTML = "";
-        
-        let opdLoaded = false;
-        let ipdLoaded = false;
-
-        if(saved) {
-            try {
-                const d = JSON.parse(saved);
-                document.getElementById('hospName').innerText = d.hosp || "TIBBIA HOSPITAL";
-                document.getElementById('hospLoc').innerText = d.loc || "KAROL BAGH, NEW DELHI";
-                
-                if(d.opd && d.opd.length > 0) {
-                    d.opd.forEach(s => addStaffRow('opdBody', s.name, s.data, days));
-                    opdLoaded = true;
-                }
-                if(d.ipd && d.ipd.length > 0) {
-                    d.ipd.forEach(s => addStaffRow('ipdBody', s.name, s.data, days));
-                    ipdLoaded = true;
-                }
-            } catch(e) {}
-        }
-
-        if(!opdLoaded) {
-            ["RINKU", "SUSHIL", "RAJENDER", "SUNITA"].forEach(n => addStaffRow('opdBody', n, null, days));
-        }
-        if(!ipdLoaded) {
-            ["AMIT", "POOJA", "RAHUL", "PRIYA"].forEach(n => addStaffRow('ipdBody', n, null, days));
-        }
-    }
-
-    function resetData() {
-        if(confirm("Are you sure you want to reset this month's roster to default?")) {
-            localStorage.removeItem(getStorageKey());
-            init();
-            alert("Roster reset successfully!");
-        }
-    }
-
-    function downloadPDF() {
-        document.body.classList.add('pdf-mode');
-        const element = document.getElementById('capture-area');
-        const opt = { 
-            margin: 5, 
-            filename: 'Hospital_Roster_' + getStorageKey() + '.pdf', 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2 }, 
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-        };
-        if(typeof html2pdf !== 'undefined') {
-            html2pdf().set(opt).from(element).save().then(() => document.body.classList.remove('pdf-mode'));
-        } else {
-            alert("PDF Library not loaded.");
-            document.body.classList.remove('pdf-mode');
-        }
-    }
-
-    function exportExcel() {
-        if(typeof XLSX === 'undefined') {
-            alert("Excel Library not loaded.");
-            return;
-        }
-        let wb = XLSX.utils.book_new();
-        function formatTableToSheet(tableId, titleText) {
-            let table = document.getElementById(tableId);
-            if(!table) return XLSX.utils.aoa_to_sheet([]);
-            let rows = table.querySelectorAll('tr');
-            let aoa = [];
-            aoa.push([titleText]);
-            aoa.push([]);
-            rows.forEach(tr => {
-                let rowData = [];
-                tr.querySelectorAll('th, td').forEach(cell => {
-                    let input = cell.querySelector('input');
-                    if (input) {
-                        rowData.push(input.value || '');
-                    } else {
-                        rowData.push(cell.innerText.trim());
-                    }
-                });
-                aoa.push(rowData);
-            });
-            return XLSX.utils.aoa_to_sheet(aoa);
-        }
-
-        let wsOpd = formatTableToSheet('opdTable', 'OPD REGISTRATION ROSTER');
-        let wsIpd = formatTableToSheet('ipdTable', 'IPD REGISTRATION ROSTER');
-
-        XLSX.utils.book_append_sheet(wb, wsOpd, "OPD");
-        XLSX.utils.book_append_sheet(wb, wsIpd, "IPD");
-        XLSX.writeFile(wb, "Hospital_Roster_" + getStorageKey() + ".xlsx");
-    }
-
-    function downloadBackupHTML() {
-        saveData(false);
-        let htmlContent = document.documentElement.outerHTML;
-        let blob = new Blob([htmlContent], { type: 'text/html' });
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement('a');
-        a.href = url;
-        a.download = `Hospital_Roster_${getStorageKey()}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    function shareWhatsApp() {
-        let h = document.getElementById('hospName').innerText;
-        let m = monthsArr[document.getElementById('monthSelect').value];
-        let y = document.getElementById('yearSelect').value;
-        let text = `*${h} REPORT - ${m} ${y}*\n\n`;
-        ['opdBody', 'ipdBody'].forEach(id => {
-            let body = document.getElementById(id);
-            if(body) {
-                text += `*--- ${id.replace('Body','').toUpperCase()} ---*\n`;
-                body.querySelectorAll('tr').forEach(tr => {
-                    let totalInput = tr.querySelector('.total-display');
-                    let totalVal = totalInput ? totalInput.value : '0';
-                    text += `${tr.cells[0].innerText.trim()}: ${totalVal} Duties\n`;
-                });
-                text += '\n';
-            }
-        });
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    }
+// Initial Launch Setup
+window.onload = () => {
+  loadSavedDatabase();
+  if (appDatabase.hospitalTitle) {
+    document.getElementById("hospitalNameDisplay").innerText = appDatabase.hospitalTitle;
+  }
+  populateYearSelect();
+  ensureMonthData(currentYear, currentMonth);
+  renderRosterView();
+};
 </script>
 </body>
 </html>
