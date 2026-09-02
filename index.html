@@ -44,6 +44,29 @@
   }
   .sync-dot.offline { background: #ef4444; box-shadow: none; }
 
+  /* Admin Lock Badge */
+  .admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-left: 6px;
+    cursor: pointer;
+  }
+  .admin-locked {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+  }
+  .admin-unlocked {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #4ade80;
+  }
+
   /* Notification Toast */
   #statusToast {
     position: fixed;
@@ -107,7 +130,8 @@
     color: #0b62a4;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   .hospital-bar {
     display: flex;
@@ -166,6 +190,9 @@
   .btn-add:hover { background: #0f766e; }
   .btn-del-action { background: #dc2626; color: #fff; padding: 6px 12px; }
   .btn-del-action:hover { background: #b91c1c; }
+  .btn-admin { background: #ea580c; color: #fff; }
+  .btn-admin:hover { background: #c2410c; }
+  .btn-admin-locked { background: #047857; color: #fff; }
 
   .staff-controls {
     display: flex;
@@ -186,6 +213,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  /* Admin-Only Elements Handling */
+  .admin-only-elem {
+    display: inline-flex;
+  }
+  body.view-only-mode .admin-only-elem {
+    display: none !important;
   }
 
   /* Printable Sheet */
@@ -218,7 +253,11 @@
     border-radius: 4px;
     text-transform: uppercase;
   }
-  .editable-hospital-name:hover, .editable-hospital-name:focus {
+  body.view-only-mode .editable-hospital-name {
+    cursor: default;
+  }
+  body:not(.view-only-mode) .editable-hospital-name:hover,
+  body:not(.view-only-mode) .editable-hospital-name:focus {
     background: #ffffff;
     border-color: #0b62a4;
   }
@@ -289,6 +328,10 @@
     background: #ffffff !important;
     box-shadow: inset 0 0 0 1.5px #0284c7;
   }
+  body.view-only-mode .duty-cell-input {
+    cursor: default;
+    pointer-events: none;
+  }
 
   .staff-name-col {
     text-align: left;
@@ -303,7 +346,11 @@
     font-size: 8.5px;
     padding: 0;
   }
-  .staff-name-input:focus {
+  body.view-only-mode .staff-name-input {
+    cursor: default;
+    pointer-events: none;
+  }
+  body:not(.view-only-mode) .staff-name-input:focus {
     border-bottom: 1.5px solid #0b62a4;
   }
 
@@ -350,7 +397,8 @@
     font-weight: 700;
   }
   .sign-line { outline: none; border-bottom: 1px dashed transparent; }
-  .sign-line:hover, .sign-line:focus { border-bottom-color: #0b62a4; }
+  body:not(.view-only-mode) .sign-line:hover, 
+  body:not(.view-only-mode) .sign-line:focus { border-bottom-color: #0b62a4; }
 
   .note-container {
     margin-top: 4px;
@@ -372,7 +420,7 @@
   }
 </style>
 </head>
-<body>
+<body class="view-only-mode">
 
 <div id="statusToast"></div>
 
@@ -396,21 +444,30 @@
 <div class="control-panel">
   <div class="panel-header">
     <div class="app-title">
-      <span>🏥</span> Hospital Duty Roster Multi-Center Pro
+      <span>🏥</span> Hospital Duty Roster Pro
       <span class="sync-indicator">
         <span class="sync-dot" id="syncStatusDot"></span>
         <span id="syncStatusText">Connecting Cloud...</span>
       </span>
+      <span class="admin-badge admin-locked" id="adminBadge" onclick="toggleAdminPrompt()">
+        🔒 View Only (क्लिक करके एडिट अनलॉक करें)
+      </span>
     </div>
     <div class="action-buttons">
+      <!-- ALWAYS VISIBLE BUTTONS (FOR ALL USERS) -->
       <button class="btn-pdf" onclick="safeExecute(downloadPdfDirect)">📄 Download PDF</button>
       <button class="btn-print" onclick="window.print()">🖨️ Print Sheet</button>
       <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
       <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
-      <button class="btn-save" onclick="safeExecute(manualSave)">💾 Save Data</button>
-      <button class="btn-exit" onclick="openExitModal()">🚪 Exit / Close</button>
-      <button class="btn-backup" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
-      <button class="btn-reset" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
+      
+      <!-- ADMIN LOGIN / LOCK BUTTON -->
+      <button class="btn-admin" id="btnAdminToggle" onclick="toggleAdminPrompt()">🔐 Admin Login</button>
+
+      <!-- ADMIN-ONLY EDIT ACTION BUTTONS (PROTECTED BY PASSWORD) -->
+      <button class="btn-save admin-only-elem" onclick="safeExecute(manualSave)">💾 Save Data</button>
+      <button class="btn-exit admin-only-elem" onclick="openExitModal()">🚪 Exit / Close</button>
+      <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
+      <button class="btn-reset admin-only-elem" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
     </div>
   </div>
 
@@ -420,8 +477,8 @@
     <select id="hospitalSelector" onchange="switchHospital(this.value)">
       <!-- Populated dynamically -->
     </select>
-    <button class="btn-add" onclick="promptAddNewHospital()">➕ Create New Hospital Roster</button>
-    <button class="btn-del-action" onclick="deleteCurrentHospital()" style="padding: 5px 10px; font-size: 11px;">🗑️ Delete Roster</button>
+    <button class="btn-add admin-only-elem" onclick="promptAddNewHospital()">➕ Create New Hospital Roster</button>
+    <button class="btn-del-action admin-only-elem" onclick="deleteCurrentHospital()" style="padding: 5px 10px; font-size: 11px;">🗑️ Delete Roster</button>
     <span style="font-size: 11px; color: #64748b; margin-left: auto;">(Auto-separated database for each hospital)</span>
   </div>
 
@@ -449,7 +506,8 @@
       </select>
     </div>
 
-    <div class="control-group" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
+    <!-- ADMIN ONLY: ADD / DELETE STAFF -->
+    <div class="control-group admin-only-elem" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
       <b>Add Staff:</b>
       <select id="targetDept">
         <option value="OPD">OPD Registration</option>
@@ -459,7 +517,7 @@
       <button class="btn-add" onclick="safeExecute(addEmployee)">➕ Add Name</button>
     </div>
 
-    <div class="control-group" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
+    <div class="control-group admin-only-elem" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
       <b>Delete:</b>
       <select id="deleteDept" onchange="safeExecute(populateDeleteDropdown)">
         <option value="OPD">OPD Registration</option>
@@ -479,7 +537,7 @@
   <!-- HEADER -->
   <div class="header-card">
     <div>
-      <div class="editable-hospital-name" id="hospitalNameDisplay" contenteditable="true" oninput="onHospitalNameEdited()" title="Click to edit Hospital Name">
+      <div class="editable-hospital-name" id="hospitalNameDisplay" contenteditable="false" oninput="onHospitalNameEdited()" title="Hospital Name">
         AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005
       </div>
       <div class="sub-header-title">MONTHLY DUTY ROSTER - OPD &amp; IPD REGISTRATION DEPARTMENTS</div>
@@ -515,15 +573,15 @@
     <div class="auth-signatures">
       <div>
         <br>___________________<br>
-        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Rinku</b></span><br>Prepared By
+        <span class="sign-line" id="signPrep" contenteditable="false" oninput="markUnsavedAndDebounce()"><b>Rinku</b></span><br>Prepared By
       </div>
       <div>
         <br>___________________<br>
-        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Sushil</b></span><br>Verified By
+        <span class="sign-line" id="signVer" contenteditable="false" oninput="markUnsavedAndDebounce()"><b>Sushil</b></span><br>Verified By
       </div>
       <div>
         <br>___________________<br>
-        <span class="sign-line" contenteditable="true" oninput="markUnsavedAndDebounce()"><b>Chandra Bhan Sir</b></span><br>Incharge
+        <span class="sign-line" id="signInch" contenteditable="false" oninput="markUnsavedAndDebounce()"><b>Chandra Bhan Sir</b></span><br>Incharge
       </div>
     </div>
   </div>
@@ -551,7 +609,8 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_v14";
+const STORAGE_KEY = "hospital_multicenter_roster_v15";
+const MASTER_ADMIN_PASS = "OPD@IPD45";
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
@@ -559,6 +618,11 @@ const now = new Date();
 let currentYear = now.getFullYear();
 let currentMonth = now.getMonth();
 let hasUnsavedChanges = false;
+let isAdminUnlocked = false;
+
+function getAdminPassword() {
+  return MASTER_ADMIN_PASS;
+}
 
 // Default State for a hospital
 function createBlankHospitalRoster(title) {
@@ -572,7 +636,6 @@ function createBlankHospitalRoster(title) {
   };
 }
 
-// Master Multi-Hospital Database structure
 let multiHospitalMaster = {
   activeHospitalId: "tibbia_karol_bagh",
   hospitals: {
@@ -639,6 +702,63 @@ function showToast(msg) {
   }, 2800);
 }
 
+// ==============================================================
+// 2. ADMIN LOCK / UNLOCK SYSTEM
+// ==============================================================
+function toggleAdminPrompt() {
+  if (isAdminUnlocked) {
+    isAdminUnlocked = false;
+    applyAdminModeUI();
+    showToast("🔒 एडमिन मोड लॉक हो गया! (अब केवल व्यू मोड है)");
+  } else {
+    const enteredPin = prompt("🔐 ड्यूटी भरने के लिए एडमिन पासवर्ड दर्ज करें:");
+    if (enteredPin === null) return;
+    if (enteredPin.trim() === getAdminPassword()) {
+      isAdminUnlocked = true;
+      applyAdminModeUI();
+      alert("🔓 पासवर्ड सही है! एडमिन मोड एक्टिव हो गया है। अब आप ड्यूटी भर और सेव कर सकते हैं।");
+      showToast("🔓 Admin Mode Active!");
+    } else {
+      alert("❌ गलत पासवर्ड! ड्यूटी में बदलाव करने की अनुमति नहीं है।");
+    }
+  }
+}
+
+function applyAdminModeUI() {
+  const badge = document.getElementById("adminBadge");
+  const btn = document.getElementById("btnAdminToggle");
+  const hName = document.getElementById("hospitalNameDisplay");
+  const signP = document.getElementById("signPrep");
+  const signV = document.getElementById("signVer");
+  const signI = document.getElementById("signInch");
+
+  if (isAdminUnlocked) {
+    document.body.classList.remove("view-only-mode");
+    badge.className = "admin-badge admin-unlocked";
+    badge.innerHTML = "🔓 Admin Active (एडिट खुला है - क्लिक करके लॉक करें)";
+    btn.className = "btn-admin-locked";
+    btn.innerHTML = "🔒 Lock Admin";
+    if (hName) hName.contentEditable = "true";
+    if (signP) signP.contentEditable = "true";
+    if (signV) signV.contentEditable = "true";
+    if (signI) signI.contentEditable = "true";
+  } else {
+    document.body.classList.add("view-only-mode");
+    badge.className = "admin-badge admin-locked";
+    badge.innerHTML = "🔒 View Only (क्लिक करके एडिट अनलॉक करें)";
+    btn.className = "btn-admin";
+    btn.innerHTML = "🔐 Admin Login";
+    if (hName) hName.contentEditable = "false";
+    if (signP) signP.contentEditable = "false";
+    if (signV) signV.contentEditable = "false";
+    if (signI) signI.contentEditable = "false";
+  }
+
+  document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(input => {
+    input.readOnly = !isAdminUnlocked;
+  });
+}
+
 // REALTIME MULTI-DEVICE CLOUD SYNC
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -660,7 +780,7 @@ function initRealtimeSync() {
       if (dot) dot.className = "sync-dot";
       if (txt) txt.innerText = "Multi-Hospital Synced ☁️";
     } else {
-      saveDatabase(false);
+      if (isAdminUnlocked) saveDatabase(false);
       refreshHospitalUI();
     }
   }, (err) => {
@@ -671,6 +791,11 @@ function initRealtimeSync() {
 }
 
 function saveDatabase(showAlertPopup = true) {
+  if (!isAdminUnlocked) {
+    alert("⚠️ ड्यूटी सेव करने के लिए पहले 'Admin Login' करें!");
+    return;
+  }
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
   hasUnsavedChanges = false;
 
@@ -714,18 +839,19 @@ function populateHospitalDropdown() {
 }
 
 function switchHospital(hId) {
-  if (hasUnsavedChanges) {
+  if (hasUnsavedChanges && isAdminUnlocked) {
     if (confirm("आपने बदलाव किए हैं। क्या आप दूसरा अस्पताल खोलने से पहले इसे सेव करना चाहते हैं?")) {
       saveDatabase(false);
     }
   }
   multiHospitalMaster.activeHospitalId = hId;
   refreshHospitalUI();
-  saveDatabase(false);
+  if (isAdminUnlocked) saveDatabase(false);
   showToast(`🏥 Switched to: ${getActiveHospitalData().hospitalTitle}`);
 }
 
 function promptAddNewHospital() {
+  if (!isAdminUnlocked) return;
   const newName = prompt("नये अस्पताल का नाम लिखें (Enter New Hospital Name):");
   if (!newName || !newName.trim()) return;
   const cleanTitle = newName.trim().toUpperCase();
@@ -740,6 +866,7 @@ function promptAddNewHospital() {
 }
 
 function deleteCurrentHospital() {
+  if (!isAdminUnlocked) return;
   const currentHospital = getActiveHospitalData();
   const keys = Object.keys(multiHospitalMaster.hospitals);
   if (keys.length <= 1) {
@@ -756,6 +883,7 @@ function deleteCurrentHospital() {
 }
 
 function onHospitalNameEdited() {
+  if (!isAdminUnlocked) return;
   const newTitle = document.getElementById("hospitalNameDisplay").innerText.trim();
   const current = getActiveHospitalData();
   if (newTitle && newTitle !== current.hospitalTitle) {
@@ -771,11 +899,12 @@ function refreshHospitalUI() {
   populateHospitalDropdown();
   ensureMonthData(currentYear, currentMonth);
   renderRosterView();
+  applyAdminModeUI();
 }
 
 // EXIT MODAL
 window.addEventListener("beforeunload", function (e) {
-  if (hasUnsavedChanges) {
+  if (hasUnsavedChanges && isAdminUnlocked) {
     e.preventDefault();
     e.returnValue = "आपने ड्यूटी में बदलाव किए हैं। क्या आप बाहर जाने से पहले सेव करना चाहते हैं?";
     return e.returnValue;
@@ -803,6 +932,7 @@ function dontSaveAndExitApp() {
 
 let autoSaveTimer = null;
 function markUnsavedAndDebounce() {
+  if (!isAdminUnlocked) return;
   hasUnsavedChanges = true;
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
@@ -823,6 +953,7 @@ function downloadJsonBackup() {
 }
 
 function resetCurrentHospitalRoster() {
+  if (!isAdminUnlocked) return;
   if (confirm("क्या आप इस अस्पताल का रोस्टर रीसेट करके खाली करना चाहते हैं?")) {
     const cur = getActiveHospitalData();
     cur.monthlyDuties = {};
@@ -851,7 +982,7 @@ function getDaysInMonth(year, month) {
 }
 
 function onDateConfigChange() {
-  if (hasUnsavedChanges) {
+  if (hasUnsavedChanges && isAdminUnlocked) {
     if (confirm("आपने इस महीने में बदलाव किए हैं। क्या आप अगला महीना चुनने से पहले इसे सेव करना चाहते हैं?")) {
       saveDatabase(false);
     }
@@ -860,6 +991,7 @@ function onDateConfigChange() {
   currentYear = parseInt(document.getElementById("yearSelect").value);
   ensureMonthData(currentYear, currentMonth);
   renderRosterView();
+  applyAdminModeUI();
   showToast(`📅 ${MONTH_NAMES[currentMonth]} ${currentYear} का रोस्टर लोड हुआ`);
 }
 
@@ -971,14 +1103,14 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
   let row = `<tr>`;
   row += `<td>${idx + 1}</td>`;
   row += `<td class="staff-name-col">
-            <input type="text" class="staff-name-input" value="${staffName}" onchange="modifyStaffName('${dept}', ${idx}, this.value)">
+            <input type="text" class="staff-name-input" value="${staffName}" ${isAdminUnlocked ? '' : 'readonly'} onchange="modifyStaffName('${dept}', ${idx}, this.value)">
           </td>`;
 
   for (let d = 0; d < numDays; d++) {
     const val = dutiesArr[d] || "";
     const res = parseDutyCode(val);
     row += `<td class="${res.cls}">
-              <input type="text" class="duty-cell-input" value="${val}" 
+              <input type="text" class="duty-cell-input" value="${val}" ${isAdminUnlocked ? '' : 'readonly'}
                 oninput="onDutyInput(this, '${dept}', '${staffName}', ${d})" 
                 onblur="recomputeTotals(${numDays})">
             </td>`;
@@ -992,6 +1124,7 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
 }
 
 function onDutyInput(elem, dept, staffName, dayIdx) {
+  if (!isAdminUnlocked) return;
   const upperVal = elem.value.toUpperCase();
   elem.value = upperVal;
 
@@ -1033,6 +1166,7 @@ function recomputeTotals(numDays) {
 }
 
 function modifyStaffName(dept, idx, newName) {
+  if (!isAdminUnlocked) return;
   const currentHospital = getActiveHospitalData();
   const oldName = currentHospital.staffDirectory[dept][idx];
   const cleaned = newName.trim().toUpperCase();
@@ -1052,6 +1186,7 @@ function modifyStaffName(dept, idx, newName) {
 }
 
 function addEmployee() {
+  if (!isAdminUnlocked) return;
   const dept = document.getElementById("targetDept").value.toLowerCase();
   const nameInput = document.getElementById("inputStaffName");
   const name = nameInput.value.trim().toUpperCase();
@@ -1070,6 +1205,7 @@ function addEmployee() {
 
   nameInput.value = "";
   renderRosterView();
+  applyAdminModeUI();
   markUnsavedAndDebounce();
   showToast(`✅ ${name} को ${dept.toUpperCase()} में जोड़ दिया गया!`);
 }
@@ -1088,6 +1224,7 @@ function populateDeleteDropdown() {
 }
 
 function deleteSelectedEmployee() {
+  if (!isAdminUnlocked) return;
   const dept = document.getElementById("deleteDept").value.toLowerCase();
   const sel = document.getElementById("deleteStaffSelect");
   const idx = parseInt(sel.value);
@@ -1107,12 +1244,13 @@ function deleteSelectedEmployee() {
     });
 
     renderRosterView();
+    applyAdminModeUI();
     markUnsavedAndDebounce();
     showToast(`🗑️ ${empName} को रोस्टर से हटा दिया गया!`);
   }
 }
 
-// ULTRA HD 300 DPI CRISP PDF DOWNLOAD
+// ULTRA HD 300 DPI CRISP PDF DOWNLOAD (FOR ALL)
 function downloadPdfDirect() {
   showToast("⏳ Ultra HD PDF तैयार हो रही है (300 DPI)...");
   const element = document.getElementById('printArea');
@@ -1149,7 +1287,7 @@ function downloadPdfDirect() {
   });
 }
 
-// WhatsApp Share
+// WhatsApp Share (FOR ALL)
 function shareToWhatsApp() {
   const currentHospital = getActiveHospitalData();
   const hName = currentHospital.hospitalTitle;
@@ -1198,7 +1336,7 @@ function shareToWhatsApp() {
   }
 }
 
-// Excel Export
+// Excel Export (FOR ALL)
 function exportDutyRosterToExcel() {
   const currentHospital = getActiveHospitalData();
   const numDays = getDaysInMonth(currentYear, currentMonth);
@@ -1268,6 +1406,7 @@ window.onload = () => {
   populateYearSelect();
   loadSavedDatabase();
   initRealtimeSync();
+  applyAdminModeUI();
 };
 </script>
 </body>
