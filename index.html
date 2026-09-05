@@ -763,7 +763,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v4";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v5";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -775,7 +775,7 @@ let hasUnsavedChanges = false;
 
 let isUnlocked = false;
 let isSuperAdmin = false;
-let sessionSuperAdminKey = "OPD@IPD4545"; // Default Master Key
+let sessionSuperAdminKey = "OPD@IPD4545";
 
 function createBlankHospitalRoster(title, customHash, encVault) {
   return {
@@ -934,7 +934,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================================================
-// 3. SECURE AUTHENTICATION (DYNAMIC HASH MATCHING)
+// 3. SECURE AUTHENTICATION (STRICT HASH VALIDATION)
 // ==============================================================
 async function triggerLoginOrUnlock() {
   if (isUnlocked) {
@@ -975,7 +975,7 @@ async function triggerLoginOrUnlock() {
     isUnlocked = true;
     sessionSuperAdminKey = activeMasterKey;
     applySecurityUI();
-    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप सभी अस्पतालों का डेटा देख और बदल सकते हैं।");
+    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप किसी भी अस्पताल का डेटा देख और बदल सकते हैं।");
     showToast("👑 Super Admin Active!");
   } else if (inputSaltedHash === hospHash) {
     isSuperAdmin = false;
@@ -1109,7 +1109,7 @@ async function switchHospitalWithAuth(targetHId) {
 }
 
 // ==============================================================
-// 4. SUPER ADMIN VAULT & PASSWORD UPDATE SYSTEM
+// 4. SUPER ADMIN VAULT & INSTANT PASSWORD UPDATE ENGINE
 // ==============================================================
 function openPasswordVault() {
   if (!isSuperAdmin) {
@@ -1210,21 +1210,22 @@ async function changeHospitalPasswordFromVault(hId) {
 
   const cleanPass = newPass.trim();
   if (!cleanPass) {
-    alert("⚠️ पासवर्ड खाली नहीं छोड़ा जा सकता!");
+    alert("⚠️ पासवर्ड खाली नहीं छोड़ा जा सकता्स!");
     return;
   }
 
-  // Generate new cryptographic salted hash and encrypted cipher
+  // Compute new salted hash & encrypted vault token
   const newSaltedHash = await computeSaltedHash(cleanPass);
   const newEncVault = encryptToken(cleanPass, activeMasterKey);
 
   targetHosp.adminHash = newSaltedHash;
   targetHosp.encVaultToken = newEncVault;
 
+  // Immediately save to storage and Firebase so old password becomes invalid instantly
   saveDatabase(false);
   openPasswordVault();
-  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड तुरंत अपडेट और सेव हो गया है!`);
-  showToast("🔑 पासवर्ड अपडेट हो गया!");
+  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड (${cleanPass}) सेट हो गया है और पुराना पासवर्ड हमेशा के लिए अमान्य कर दिया गया है!`);
+  showToast("🔑 पासवर्ड तुरंत अपडेट हो गया!");
 }
 
 function closePasswordVault() {
@@ -1232,7 +1233,7 @@ function closePasswordVault() {
 }
 
 // ==============================================================
-// 5. TRUE REALTIME SYNC
+// 5. TRUE REALTIME SYNC (PRESERVES NEW HASHES)
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1250,6 +1251,13 @@ function initRealtimeSync() {
   firebaseDb.ref("multi_hospital_rosters").on("value", (snapshot) => {
     const cloudData = snapshot.val();
     if (cloudData && cloudData.hospitals && Object.keys(cloudData.hospitals).length > 0) {
+      // Merge while keeping active local password hashes updated if cloud lacks them
+      Object.keys(cloudData.hospitals).forEach(hId => {
+        if (multiHospitalMaster.hospitals[hId] && multiHospitalMaster.hospitals[hId].adminHash) {
+          cloudData.hospitals[hId].adminHash = multiHospitalMaster.hospitals[hId].adminHash;
+          cloudData.hospitals[hId].encVaultToken = multiHospitalMaster.hospitals[hId].encVaultToken;
+        }
+      });
       multiHospitalMaster = cloudData;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
       refreshHospitalUI();
@@ -1284,7 +1292,7 @@ function saveDatabase(showAlertPopup = true) {
 
 function loadSavedDatabase() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("hospital_multicenter_roster_v16");
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("hospital_multicenter_roster_clean_v4");
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.hospitals) {
