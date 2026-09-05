@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -20,7 +21,20 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
-  body { margin: 0; padding: 12px; background-color: #f1f5f9; color: #1e293b; }
+  body { 
+    margin: 0; 
+    padding: 12px; 
+    background-color: #0c1e33; 
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(14, 116, 144, 0.28) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(11, 98, 164, 0.32) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(2, 132, 199, 0.12) 0px, transparent 65%),
+      url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2338bdf8' fill-opacity='0.045' fill-rule='evenodd'%3E%3Cpath d='M50 20h20v20h20v20H70v20H50V60H30V40h20V20zm0 8h12v12h12v12H62v12H50V52H38V40h12V28z'/%3E%3Cpath d='M10 95h14l4-8 6 16 6-12 4 4h16' stroke='%2338bdf8' stroke-width='1.2' stroke-opacity='0.06' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E");
+    background-attachment: fixed;
+    background-size: auto, auto, auto, 120px 120px;
+    color: #1e293b; 
+    min-height: 100vh;
+  }
 
   /* Cloud Sync Status Indicator */
   .sync-indicator {
@@ -66,6 +80,11 @@
     color: #166534;
     border: 1px solid #4ade80;
   }
+  .admin-super {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+  }
 
   /* Notification Toast */
   #statusToast {
@@ -85,8 +104,8 @@
     border-left: 4px solid #10b981;
   }
 
-  /* Exit Modal Overlay */
-  #exitModalOverlay {
+  /* General Modal Overlay */
+  .modal-overlay {
     display: none;
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -96,12 +115,12 @@
     justify-content: center;
     align-items: center;
   }
-  .exit-modal-box {
+  .modal-box {
     background: #ffffff;
     border-radius: 12px;
     padding: 24px 28px;
-    max-width: 440px;
-    width: 90%;
+    max-width: 520px;
+    width: 92%;
     box-shadow: 0 12px 30px rgba(0,0,0,0.35);
     text-align: center;
     border: 2px solid #0b62a4;
@@ -193,6 +212,8 @@
   .btn-admin { background: #ea580c; color: #fff; }
   .btn-admin:hover { background: #c2410c; }
   .btn-admin-locked { background: #047857; color: #fff; }
+  .btn-super-admin { background: #d97706; color: #fff; font-weight: 800; border: 1.5px solid #b45309; }
+  .btn-super-admin:hover { background: #b45309; }
 
   .staff-controls {
     display: flex;
@@ -217,14 +238,45 @@
 
   /* Admin-Only Elements Handling */
   .admin-only-elem {
-    display: inline-flex;
-  }
-  body.view-only-mode .admin-only-elem {
     display: none !important;
   }
+  body.unlocked-mode .admin-only-elem {
+    display: inline-flex !important;
+  }
 
-  /* Printable Sheet */
+  /* Super-Admin Only Elements */
+  .super-admin-only {
+    display: none !important;
+  }
+  body.super-admin-mode .super-admin-only {
+    display: inline-flex !important;
+  }
+
+  /* Strict Roster Locked Notice (Hospital Ambient Glassmorphic Card) */
+  #rosterLockedNotice {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    border: 2px solid rgba(14, 165, 233, 0.4);
+    border-radius: 14px;
+    padding: 55px 24px;
+    text-align: center;
+    margin: 20px auto;
+    max-width: 680px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  #rosterLockedNotice::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #0284c7, #10b981, #0b62a4);
+  }
+
+  /* Printable Sheet (Hidden until authenticated) */
   .roster-sheet {
+    display: none;
     background: #ffffff;
     padding: 8px 10px;
     border: 1px solid #94a3b8;
@@ -252,14 +304,6 @@
     padding: 2px 4px;
     border-radius: 4px;
     text-transform: uppercase;
-  }
-  body.view-only-mode .editable-hospital-name {
-    cursor: default;
-  }
-  body:not(.view-only-mode) .editable-hospital-name:hover,
-  body:not(.view-only-mode) .editable-hospital-name:focus {
-    background: #ffffff;
-    border-color: #0b62a4;
   }
   .sub-header-title {
     font-size: 11px;
@@ -328,10 +372,6 @@
     background: #ffffff !important;
     box-shadow: inset 0 0 0 1.5px #0284c7;
   }
-  body.view-only-mode .duty-cell-input {
-    cursor: default;
-    pointer-events: none;
-  }
 
   .staff-name-col {
     text-align: left;
@@ -346,11 +386,7 @@
     font-size: 8.5px;
     padding: 0;
   }
-  body.view-only-mode .staff-name-input {
-    cursor: default;
-    pointer-events: none;
-  }
-  body:not(.view-only-mode) .staff-name-input:focus {
+  .staff-name-input:focus {
     border-bottom: 1.5px solid #0b62a4;
   }
 
@@ -397,8 +433,7 @@
     font-weight: 700;
   }
   .sign-line { outline: none; border-bottom: 1px dashed transparent; }
-  body:not(.view-only-mode) .sign-line:hover, 
-  body:not(.view-only-mode) .sign-line:focus { border-bottom-color: #0b62a4; }
+  .sign-line:hover, .sign-line:focus { border-bottom-color: #0b62a4; }
 
   .note-container {
     margin-top: 4px;
@@ -410,23 +445,49 @@
   }
   .note-container b { color: #b91c1c; }
 
+  /* Passwords Directory Table in Modal */
+  .pw-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .pw-table th, .pw-table td {
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+  }
+  .pw-table th {
+    background: #f1f5f9;
+    color: #0b62a4;
+    font-weight: 800;
+  }
+  .pw-code {
+    font-family: monospace;
+    font-weight: 800;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
   @media print {
-    .control-panel, #statusToast, #exitModalOverlay, .hospital-bar { display: none !important; }
+    .control-panel, #statusToast, .modal-overlay, .hospital-bar, #rosterLockedNotice { display: none !important; }
     body { padding: 0; background: #ffffff; }
-    .roster-sheet { border: none; box-shadow: none; padding: 0; width: 100%; }
+    .roster-sheet { border: none; box-shadow: none; padding: 0; width: 100%; display: block !important; }
     @page { size: A4 landscape; margin: 4mm; }
     table.roster-grid th, table.roster-grid td { height: 18px; font-size: 7.5px; }
     .duty-cell-input { font-size: 7.5px; }
   }
 </style>
 </head>
-<body class="view-only-mode">
+<body>
 
 <div id="statusToast"></div>
 
 <!-- EXIT MODAL -->
-<div id="exitModalOverlay">
-  <div class="exit-modal-box">
+<div id="exitModalOverlay" class="modal-overlay">
+  <div class="modal-box">
     <div style="font-size: 32px; margin-bottom: 6px;">🚪</div>
     <h3 style="margin: 0; color: #0b62a4; font-size: 17px;">रोस्टर से बाहर निकलना चाहते हैं?</h3>
     <p style="font-size: 13px; color: #475569; margin: 12px 0 22px 0; line-height: 1.5;">
@@ -440,6 +501,61 @@
   </div>
 </div>
 
+<!-- SECURE PASSWORD INPUT MODAL WITH MASKING & SHOW/HIDE TOGGLE -->
+<div id="securePasswordModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 420px; text-align: left;">
+    <div style="text-align: center; font-size: 28px; margin-bottom: 4px;" id="secModalIcon">🔐</div>
+    <h3 style="margin: 0 0 6px 0; color: #0b62a4; font-size: 16px; text-align: center;" id="secModalTitle">सुरक्षा प्रमाणीकरण</h3>
+    <p style="font-size: 12.5px; color: #475569; margin: 4px 0 14px 0; text-align: center;" id="secModalMsg">आगे बढ़ने के लिए पासवर्ड दर्ज करें:</p>
+    
+    <div style="position: relative; margin-bottom: 8px;">
+      <input type="password" id="secModalInput" placeholder="Enter Password" 
+        style="width: 100%; padding: 10px 42px 10px 12px; border: 1.5px solid #0284c7; border-radius: 6px; font-size: 14px; outline: none; font-weight: 700;">
+      <button type="button" id="secModalEyeBtn" onclick="togglePasswordVisibility()" 
+        style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; font-size: 16px; cursor: pointer; padding: 4px 6px; color: #64748b;" title="Show/Hide Password">
+        👁️
+      </button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 12px; color: #64748b;">
+      <input type="checkbox" id="secModalCheckbox" onchange="togglePasswordVisibilityFromCheck(this)">
+      <label for="secModalCheckbox" style="cursor: pointer;">पासवर्ड दिखाएं (Show Password)</label>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn-reset" type="button" onclick="cancelSecurePasswordModal()" style="padding: 8px 14px;">रद्द करें (Cancel)</button>
+      <button class="btn-save" type="button" onclick="submitSecurePasswordModal()" style="padding: 8px 16px; background: #0b62a4;">प्रमाणित करें (Confirm)</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPER ADMIN: ALL PASSWORDS VAULT MODAL -->
+<div id="pwVaultModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 580px;">
+    <div style="font-size: 30px; margin-bottom: 6px;">🛡️</div>
+    <h3 style="margin: 0; color: #b45309; font-size: 17px;">Master Privacy Vault - All Hospital Passwords</h3>
+    <p style="font-size: 12px; color: #64748b; margin: 6px 0 14px 0;">
+      यह सूची केवल आपके पर्सनल मास्टर पासवर्ड (Super Admin) से ही देखी जा सकती है।
+    </p>
+    <div style="max-height: 280px; overflow-y: auto;">
+      <table class="pw-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Hospital Name</th>
+            <th>Admin Password</th>
+          </tr>
+        </thead>
+        <tbody id="pwVaultTableBody">
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 18px;">
+      <button class="btn-reset" onclick="closePasswordVault()">बंद करें (Close Vault)</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONTROL PANEL -->
 <div class="control-panel">
   <div class="panel-header">
@@ -449,21 +565,24 @@
         <span class="sync-dot" id="syncStatusDot"></span>
         <span id="syncStatusText">Connecting Cloud...</span>
       </span>
-      <span class="admin-badge admin-locked" id="adminBadge" onclick="toggleAdminPrompt()">
-        🔒 View Only (क्लिक करके एडिट अनलॉक करें)
+      <span class="admin-badge admin-locked" id="adminBadge" onclick="triggerLoginOrUnlock()">
+        🔒 Roster Locked (क्लिक करके पासवर्ड डालें)
       </span>
     </div>
     <div class="action-buttons">
-      <!-- ALWAYS VISIBLE BUTTONS (FOR ALL USERS) -->
+      <!-- ALWAYS VISIBLE BUTTONS -->
       <button class="btn-pdf" onclick="safeExecute(downloadPdfDirect)">📄 Download PDF</button>
       <button class="btn-print" onclick="window.print()">🖨️ Print Sheet</button>
       <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
       <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
       
       <!-- ADMIN LOGIN / LOCK BUTTON -->
-      <button class="btn-admin" id="btnAdminToggle" onclick="toggleAdminPrompt()">🔐 Admin Login</button>
+      <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
 
-      <!-- ADMIN-ONLY EDIT ACTION BUTTONS (PROTECTED BY PASSWORD) -->
+      <!-- SUPER ADMIN MASTER VAULT BUTTON -->
+      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️ View All Passwords</button>
+
+      <!-- ADMIN-ONLY EDIT ACTION BUTTONS (VISIBLE ONLY AFTER CORRECT PASSWORD) -->
       <button class="btn-save admin-only-elem" onclick="safeExecute(manualSave)">💾 Save Data</button>
       <button class="btn-exit admin-only-elem" onclick="openExitModal()">🚪 Exit / Close</button>
       <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
@@ -474,12 +593,11 @@
   <!-- MULTI-HOSPITAL SELECTOR & CREATOR -->
   <div class="hospital-bar">
     <b>🏥 Active Hospital:</b>
-    <select id="hospitalSelector" onchange="switchHospital(this.value)">
-      <!-- Populated dynamically -->
+    <select id="hospitalSelector" onchange="switchHospitalWithAuth(this.value)">
     </select>
     <button class="btn-add admin-only-elem" onclick="promptAddNewHospital()">➕ Create New Hospital Roster</button>
     <button class="btn-del-action admin-only-elem" onclick="deleteCurrentHospital()" style="padding: 5px 10px; font-size: 11px;">🗑️ Delete Roster</button>
-    <span style="font-size: 11px; color: #64748b; margin-left: auto;">(Auto-separated database for each hospital)</span>
+    <span style="font-size: 11px; color: #64748b; margin-left: auto;">(पासवर्ड डालने पर ही रोस्टर दिखेगा व ड्यूटी भरी जाएगी)</span>
   </div>
 
   <div class="staff-controls">
@@ -502,7 +620,6 @@
 
       <b>Year:</b>
       <select id="yearSelect" onchange="safeExecute(onDateConfigChange)">
-        <!-- Populated up to 2035 -->
       </select>
     </div>
 
@@ -524,14 +641,25 @@
         <option value="IPD">IPD Registration</option>
       </select>
       <select id="deleteStaffSelect" style="width: 140px;">
-        <!-- Filled by JS -->
       </select>
       <button class="btn-del-action" onclick="safeExecute(deleteSelectedEmployee)">🗑️ Delete Name</button>
     </div>
   </div>
 </div>
 
-<!-- ROSTER SHEET -->
+<!-- ROSTER LOCKED NOTICE (STRICT PRE-VIEW GATE) -->
+<div id="rosterLockedNotice">
+  <div style="font-size: 44px; margin-bottom: 8px;">🔒</div>
+  <h2 style="color: #0b62a4; margin: 0 0 8px 0; font-size: 19px;">ड्यूटी रोस्टर पूरी तरह सुरक्षित व लॉक है</h2>
+  <p style="color: #64748b; font-size: 13.5px; margin: 0 auto 20px auto; max-width: 500px; line-height: 1.5;">
+    गलत पासवर्ड डालने पर रोस्टर नहीं खुलेगा। इस अस्पताल की ड्यूटी देखने तथा भरने के लिए अस्पताल का एडमिन पासवर्ड दर्ज करें।
+  </p>
+  <button class="btn-admin" style="padding: 10px 22px; font-size: 14px;" onclick="triggerLoginOrUnlock()">
+    🔐 पासवर्ड दर्ज करके रोस्टर व ड्यूटी खोलें
+  </button>
+</div>
+
+<!-- ROSTER SHEET (STRICTLY HIDDEN UNTIL CORRECT PASSWORD) -->
 <div class="roster-sheet" id="printArea">
 
   <!-- HEADER -->
@@ -609,8 +737,11 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_v15";
-const MASTER_ADMIN_PASS = "OPD@IPD45";
+const STORAGE_KEY = "hospital_multicenter_roster_v16";
+
+// 🔐 SUPER ADMIN MASTER KEY
+const SUPER_ADMIN_PASS = "OPD@IPD4545";
+
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
@@ -618,16 +749,15 @@ const now = new Date();
 let currentYear = now.getFullYear();
 let currentMonth = now.getMonth();
 let hasUnsavedChanges = false;
-let isAdminUnlocked = false;
 
-function getAdminPassword() {
-  return MASTER_ADMIN_PASS;
-}
+// Strict Security Gate States
+let isUnlocked = false;
+let isSuperAdmin = false;
 
-// Default State for a hospital
-function createBlankHospitalRoster(title) {
+function createBlankHospitalRoster(title, customPassword) {
   return {
     hospitalTitle: title || "NEW HOSPITAL / CENTER",
+    adminPassword: customPassword || "OPD@IPD45",
     staffDirectory: {
       opd: ["STAFF 1", "STAFF 2"],
       ipd: ["STAFF A", "STAFF B"]
@@ -641,6 +771,7 @@ let multiHospitalMaster = {
   hospitals: {
     "tibbia_karol_bagh": {
       hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
+      adminPassword: "OPD@IPD45",
       staffDirectory: {
         opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
         ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
@@ -655,7 +786,7 @@ function getActiveHospitalData() {
     const keys = Object.keys(multiHospitalMaster.hospitals);
     multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "default_hospital";
     if (!multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId]) {
-      multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId] = createBlankHospitalRoster("AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL");
+      multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId] = createBlankHospitalRoster("AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL", "OPD@IPD45");
     }
   }
   return multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
@@ -703,28 +834,134 @@ function showToast(msg) {
 }
 
 // ==============================================================
-// 2. ADMIN LOCK / UNLOCK SYSTEM
+// 2. SECURE PASSWORD MODAL WITH MASKING (SHOW / HIDE)
 // ==============================================================
-function toggleAdminPrompt() {
-  if (isAdminUnlocked) {
-    isAdminUnlocked = false;
-    applyAdminModeUI();
-    showToast("🔒 एडमिन मोड लॉक हो गया! (अब केवल व्यू मोड है)");
+let activePasswordPromiseResolver = null;
+
+function askSecurePassword(title, message, icon = "🔐") {
+  return new Promise((resolve) => {
+    activePasswordPromiseResolver = resolve;
+    document.getElementById("secModalTitle").innerText = title || "सुरक्षा प्रमाणीकरण";
+    document.getElementById("secModalMsg").innerText = message || "आगे बढ़ने के लिए पासवर्ड दर्ज करें:";
+    document.getElementById("secModalIcon").innerText = icon || "🔐";
+
+    const input = document.getElementById("secModalInput");
+    input.value = "";
+    input.type = "password";
+    document.getElementById("secModalCheckbox").checked = false;
+    document.getElementById("secModalEyeBtn").innerText = "👁️";
+
+    document.getElementById("securePasswordModal").style.display = "flex";
+    setTimeout(() => input.focus(), 150);
+  });
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById("secModalInput");
+  const check = document.getElementById("secModalCheckbox");
+  const eye = document.getElementById("secModalEyeBtn");
+  if (input.type === "password") {
+    input.type = "text";
+    check.checked = true;
+    eye.innerText = "🙈";
   } else {
-    const enteredPin = prompt("🔐 ड्यूटी भरने के लिए एडमिन पासवर्ड दर्ज करें:");
-    if (enteredPin === null) return;
-    if (enteredPin.trim() === getAdminPassword()) {
-      isAdminUnlocked = true;
-      applyAdminModeUI();
-      alert("🔓 पासवर्ड सही है! एडमिन मोड एक्टिव हो गया है। अब आप ड्यूटी भर और सेव कर सकते हैं।");
-      showToast("🔓 Admin Mode Active!");
-    } else {
-      alert("❌ गलत पासवर्ड! ड्यूटी में बदलाव करने की अनुमति नहीं है।");
-    }
+    input.type = "password";
+    check.checked = false;
+    eye.innerText = "👁️";
   }
 }
 
-function applyAdminModeUI() {
+function togglePasswordVisibilityFromCheck(elem) {
+  const input = document.getElementById("secModalInput");
+  const eye = document.getElementById("secModalEyeBtn");
+  if (elem.checked) {
+    input.type = "text";
+    eye.innerText = "🙈";
+  } else {
+    input.type = "password";
+    eye.innerText = "👁️";
+  }
+}
+
+function submitSecurePasswordModal() {
+  const val = document.getElementById("secModalInput").value;
+  document.getElementById("securePasswordModal").style.display = "none";
+  if (activePasswordPromiseResolver) {
+    activePasswordPromiseResolver(val.trim());
+    activePasswordPromiseResolver = null;
+  }
+}
+
+function cancelSecurePasswordModal() {
+  document.getElementById("securePasswordModal").style.display = "none";
+  if (activePasswordPromiseResolver) {
+    activePasswordPromiseResolver(null);
+    activePasswordPromiseResolver = null;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("secModalInput");
+  if (input) {
+    input.addEventListener("keyup", (e) => {
+      if (e.key === "Enter") submitSecurePasswordModal();
+      if (e.key === "Escape") cancelSecurePasswordModal();
+    });
+  }
+});
+
+// ==============================================================
+// 3. STRICT AUTHENTICATION: SHOW & ALLOW ENTRY ONLY ON CORRECT PASSWORD
+// ==============================================================
+async function triggerLoginOrUnlock() {
+  if (isUnlocked) {
+    // If already open, lock it back completely
+    isUnlocked = false;
+    isSuperAdmin = false;
+    applySecurityUI();
+    showToast("🔒 रोस्टर वापस लॉक हो गया!");
+    return;
+  }
+
+  const curHosp = getActiveHospitalData();
+  const enteredPin = await askSecurePassword(
+    "Hospital Gate Verification",
+    `"${curHosp.hospitalTitle}" की ड्यूटी देखने तथा भरने के लिए पासवर्ड दर्ज करें:`
+  );
+
+  if (enteredPin === null) {
+    isUnlocked = false;
+    isSuperAdmin = false;
+    applySecurityUI();
+    return;
+  }
+
+  const cleanPin = enteredPin.trim();
+  const hospPass = curHosp.adminPassword || "OPD@IPD45";
+
+  if (cleanPin === SUPER_ADMIN_PASS) {
+    isSuperAdmin = true;
+    isUnlocked = true;
+    applySecurityUI();
+    alert("👑 Super Admin Unlocked!\nआप किसी भी अस्पताल का रोस्टर देख सकते हैं, ड्यूटी भर सकते हैं और 'View All Passwords' खोल सकते हैं।");
+    showToast("👑 Super Admin Active!");
+  } else if (cleanPin === hospPass) {
+    isSuperAdmin = false;
+    isUnlocked = true;
+    applySecurityUI();
+    alert(`🔓 पासवर्ड सही है!\n"${curHosp.hospitalTitle}" का रोस्टर खुल गया है और आप ड्यूटी भर सकते हैं।`);
+    showToast("🔓 Hospital Roster Unlocked!");
+  } else {
+    isUnlocked = false;
+    isSuperAdmin = false;
+    applySecurityUI();
+    alert("❌ गलत पासवर्ड! न तो रोस्टर दिखाई देगा और न ही ड्यूटी भरी जा सकेगी।");
+  }
+}
+
+function applySecurityUI() {
+  const printArea = document.getElementById("printArea");
+  const lockNotice = document.getElementById("rosterLockedNotice");
   const badge = document.getElementById("adminBadge");
   const btn = document.getElementById("btnAdminToggle");
   const hName = document.getElementById("hospitalNameDisplay");
@@ -732,31 +969,133 @@ function applyAdminModeUI() {
   const signV = document.getElementById("signVer");
   const signI = document.getElementById("signInch");
 
-  if (isAdminUnlocked) {
-    document.body.classList.remove("view-only-mode");
-    badge.className = "admin-badge admin-unlocked";
-    badge.innerHTML = "🔓 Admin Active (एडिट खुला है - क्लिक करके लॉक करें)";
-    btn.className = "btn-admin-locked";
-    btn.innerHTML = "🔒 Lock Admin";
+  if (isUnlocked) {
+    printArea.style.display = "block";
+    lockNotice.style.display = "none";
+    document.body.classList.add("unlocked-mode");
+
+    if (isSuperAdmin) {
+      document.body.classList.add("super-admin-mode");
+      badge.className = "admin-badge admin-super";
+      badge.innerHTML = "👑 Super Admin Active (क्लिक करके लॉक करें)";
+      btn.className = "btn-admin-locked";
+      btn.innerHTML = "🔒 Lock Roster";
+    } else {
+      document.body.classList.remove("super-admin-mode");
+      badge.className = "admin-badge admin-unlocked";
+      badge.innerHTML = "🔓 Unlocked & Active (क्लिक करके लॉक करें)";
+      btn.className = "btn-admin-locked";
+      btn.innerHTML = "🔒 Lock Roster";
+    }
+
     if (hName) hName.contentEditable = "true";
     if (signP) signP.contentEditable = "true";
     if (signV) signV.contentEditable = "true";
     if (signI) signI.contentEditable = "true";
+
+    document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(input => {
+      input.readOnly = false;
+    });
   } else {
-    document.body.classList.add("view-only-mode");
+    printArea.style.display = "none";
+    lockNotice.style.display = "block";
+    document.body.classList.remove("unlocked-mode");
+    document.body.classList.remove("super-admin-mode");
+
     badge.className = "admin-badge admin-locked";
-    badge.innerHTML = "🔒 View Only (क्लिक करके एडिट अनलॉक करें)";
+    badge.innerHTML = "🔒 Roster Locked (पासवर्ड अनिवार्य)";
     btn.className = "btn-admin";
-    btn.innerHTML = "🔐 Admin Login";
+    btn.innerHTML = "🔐 Unlock Roster";
+
     if (hName) hName.contentEditable = "false";
     if (signP) signP.contentEditable = "false";
     if (signV) signV.contentEditable = "false";
     if (signI) signI.contentEditable = "false";
+
+    document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(input => {
+      input.readOnly = true;
+    });
+  }
+}
+
+async function switchHospitalWithAuth(targetHId) {
+  if (hasUnsavedChanges && isUnlocked) {
+    if (confirm("आपने बदलाव किए हैं। क्या आप दूसरा अस्पताल खोलने से पहले इसे सेव करना चाहते हैं?")) {
+      saveDatabase(false);
+    }
   }
 
-  document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(input => {
-    input.readOnly = !isAdminUnlocked;
+  if (isSuperAdmin) {
+    multiHospitalMaster.activeHospitalId = targetHId;
+    refreshHospitalUI();
+    return;
+  }
+
+  isUnlocked = false;
+  applySecurityUI();
+
+  const targetHosp = multiHospitalMaster.hospitals[targetHId] || {};
+  const enteredPin = await askSecurePassword(
+    "Hospital Gate Verification",
+    `"${targetHosp.hospitalTitle}" की ड्यूटी देखने तथा भरने के लिए पासवर्ड दर्ज करें:`
+  );
+
+  if (enteredPin === null) {
+    populateHospitalDropdown();
+    return;
+  }
+
+  const cleanPin = enteredPin.trim();
+  const hospPass = targetHosp.adminPassword || "OPD@IPD45";
+
+  if (cleanPin === SUPER_ADMIN_PASS) {
+    isSuperAdmin = true;
+    isUnlocked = true;
+    multiHospitalMaster.activeHospitalId = targetHId;
+    refreshHospitalUI();
+    showToast("👑 Super Admin Mode!");
+  } else if (cleanPin === hospPass) {
+    isUnlocked = true;
+    multiHospitalMaster.activeHospitalId = targetHId;
+    refreshHospitalUI();
+    showToast(`🏥 Unlocked: ${targetHosp.hospitalTitle}`);
+  } else {
+    isUnlocked = false;
+    applySecurityUI();
+    populateHospitalDropdown();
+    alert("❌ गलत पासवर्ड! न तो रोस्टर दिखाई देगा और न ही ड्यूटी भरी जा सकेगी।");
+  }
+}
+
+// ==============================================================
+// 4. MASTER PRIVACY VAULT (VIEW ALL PASSWORDS)
+// ==============================================================
+function openPasswordVault() {
+  if (!isSuperAdmin) {
+    alert("⚠️ केवल Super Admin ही सभी पासवर्ड देख सकते हैं!");
+    return;
+  }
+
+  const tbody = document.getElementById("pwVaultTableBody");
+  tbody.innerHTML = "";
+  let idx = 1;
+
+  Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
+    const hosp = multiHospitalMaster.hospitals[hId];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${idx++}</td>
+      <td style="font-weight:700; color:#1e293b;">${hosp.hospitalTitle}</td>
+      <td><span class="pw-code">${hosp.adminPassword || "OPD@IPD45"}</span></td>
+    `;
+    tbody.appendChild(tr);
   });
+
+  document.getElementById("pwVaultModal").style.display = "flex";
+}
+
+function closePasswordVault() {
+  document.getElementById("pwVaultModal").style.display = "none";
 }
 
 // REALTIME MULTI-DEVICE CLOUD SYNC
@@ -780,7 +1119,7 @@ function initRealtimeSync() {
       if (dot) dot.className = "sync-dot";
       if (txt) txt.innerText = "Multi-Hospital Synced ☁️";
     } else {
-      if (isAdminUnlocked) saveDatabase(false);
+      if (isUnlocked) saveDatabase(false);
       refreshHospitalUI();
     }
   }, (err) => {
@@ -791,8 +1130,8 @@ function initRealtimeSync() {
 }
 
 function saveDatabase(showAlertPopup = true) {
-  if (!isAdminUnlocked) {
-    alert("⚠️ ड्यूटी सेव करने के लिए पहले 'Admin Login' करें!");
+  if (!isUnlocked) {
+    alert("⚠️ ड्यूटी सेव करने के लिए पहले पासवर्ड डालकर रोस्टर अनलॉक करें!");
     return;
   }
 
@@ -802,7 +1141,7 @@ function saveDatabase(showAlertPopup = true) {
   if (firebaseDb) {
     firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster).then(() => {
       if (showAlertPopup) {
-        alert("✅ इस अस्पताल की ड्यूटी ऑनलाइन सेव हो गई है! (All systems updated)");
+        alert("✅ इस अस्पताल की ड्यूटी ऑनलाइन सेव हो गई है!");
         showToast("☁️ ऑनलाइन सिंक हो गया!");
       }
     }).catch(() => {
@@ -825,7 +1164,6 @@ function loadSavedDatabase() {
   } catch (err) {}
 }
 
-// MULTI-HOSPITAL FUNCTIONS
 function populateHospitalDropdown() {
   const sel = document.getElementById("hospitalSelector");
   sel.innerHTML = "";
@@ -838,44 +1176,78 @@ function populateHospitalDropdown() {
   });
 }
 
-function switchHospital(hId) {
-  if (hasUnsavedChanges && isAdminUnlocked) {
-    if (confirm("आपने बदलाव किए हैं। क्या आप दूसरा अस्पताल खोलने से पहले इसे सेव करना चाहते हैं?")) {
-      saveDatabase(false);
-    }
+async function promptAddNewHospital() {
+  if (!isUnlocked) {
+    alert("⚠️ नया अस्पताल बनाने के लिए पहले एडमिन पासवर्ड अनलॉक करें!");
+    return;
   }
-  multiHospitalMaster.activeHospitalId = hId;
-  refreshHospitalUI();
-  if (isAdminUnlocked) saveDatabase(false);
-  showToast(`🏥 Switched to: ${getActiveHospitalData().hospitalTitle}`);
-}
-
-function promptAddNewHospital() {
-  if (!isAdminUnlocked) return;
   const newName = prompt("नये अस्पताल का नाम लिखें (Enter New Hospital Name):");
   if (!newName || !newName.trim()) return;
   const cleanTitle = newName.trim().toUpperCase();
-  const newId = "hosp_" + Date.now();
 
-  multiHospitalMaster.hospitals[newId] = createBlankHospitalRoster(cleanTitle);
+  const enteredPass = await askSecurePassword(
+    "नये अस्पताल का पासवर्ड सेट करें",
+    `अस्पताल "${cleanTitle}" का एडमिन पासवर्ड बनाएं:`,
+    "🔑"
+  );
+  if (enteredPass === null) return;
+
+  const cleanPass = enteredPass.trim();
+  if (!cleanPass) {
+    alert("⚠️ पासवर्ड खाली नहीं छोड़ा जा सकता!");
+    return;
+  }
+
+  const warningText = `⚠️ महत्वपूर्ण चेतावनी (IMPORTANT WARNING)\n\n` +
+    `अस्पताल: ${cleanTitle}\n` +
+    `आपका सेट किया गया पासवर्ड: ${cleanPass}\n\n` +
+    `📌 कृपया इस पासवर्ड को अभी अपनी डायरी या फोन में नोट कर लें!\n` +
+    `📌 यदि आप पासवर्ड भूल गए, तो ड्यूटी देखना या भरना पूरी तरह बंद हो जाएगा।\n` +
+    `📌 सुरक्षा कारणों से आपके अलावा कोई अन्य व्यक्ति इसे नहीं खोल सकेगा।\n\n` +
+    `क्या आपने यह पासवर्ड सुरक्षित नोट कर लिया है?`;
+
+  if (!confirm(warningText)) {
+    alert("❌ अस्पताल बनाने की प्रक्रिया रद्द कर दी गई।");
+    return;
+  }
+
+  const newId = "hosp_" + Date.now();
+  multiHospitalMaster.hospitals[newId] = createBlankHospitalRoster(cleanTitle, cleanPass);
   multiHospitalMaster.activeHospitalId = newId;
+  isUnlocked = true;
 
   refreshHospitalUI();
   saveDatabase(false);
-  alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है! अब आप इसमें अलग स्टाफ और ड्यूटी भर सकते हैं।`);
+  alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
 }
 
-function deleteCurrentHospital() {
-  if (!isAdminUnlocked) return;
+async function deleteCurrentHospital() {
+  if (!isUnlocked) return;
   const currentHospital = getActiveHospitalData();
   const keys = Object.keys(multiHospitalMaster.hospitals);
   if (keys.length <= 1) {
     alert("कम से कम एक अस्पताल का रोस्टर रहना अनिवार्य है!");
     return;
   }
-  if (confirm(`क्या आप "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
+
+  const verifyPin = await askSecurePassword(
+    "अस्पताल रोस्टर हटाने का सत्यापन",
+    `"${currentHospital.hospitalTitle}" को पूरी तरह मिटाने के लिए एडमिन या सुपर एडमिन पासवर्ड दर्ज करें:`,
+    "⚠️"
+  );
+  if (verifyPin === null) return;
+
+  const cleanPin = verifyPin.trim();
+  const hospPass = currentHospital.adminPassword || "OPD@IPD45";
+  if (cleanPin !== hospPass && cleanPin !== SUPER_ADMIN_PASS) {
+    alert("❌ गलत पासवर्ड! अस्पताल रोस्टर हटाने की अनुमति नहीं है।");
+    return;
+  }
+
+  if (confirm(`⚠️ अंतिम चेतावनी: क्या आप "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
     delete multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
     multiHospitalMaster.activeHospitalId = Object.keys(multiHospitalMaster.hospitals)[0];
+    isUnlocked = false;
     refreshHospitalUI();
     saveDatabase(false);
     showToast("🗑️ अस्पताल रोस्टर हटा दिया गया!");
@@ -883,7 +1255,7 @@ function deleteCurrentHospital() {
 }
 
 function onHospitalNameEdited() {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   const newTitle = document.getElementById("hospitalNameDisplay").innerText.trim();
   const current = getActiveHospitalData();
   if (newTitle && newTitle !== current.hospitalTitle) {
@@ -899,12 +1271,12 @@ function refreshHospitalUI() {
   populateHospitalDropdown();
   ensureMonthData(currentYear, currentMonth);
   renderRosterView();
-  applyAdminModeUI();
+  applySecurityUI();
 }
 
 // EXIT MODAL
 window.addEventListener("beforeunload", function (e) {
-  if (hasUnsavedChanges && isAdminUnlocked) {
+  if (hasUnsavedChanges && isUnlocked) {
     e.preventDefault();
     e.returnValue = "आपने ड्यूटी में बदलाव किए हैं। क्या आप बाहर जाने से पहले सेव करना चाहते हैं?";
     return e.returnValue;
@@ -932,7 +1304,7 @@ function dontSaveAndExitApp() {
 
 let autoSaveTimer = null;
 function markUnsavedAndDebounce() {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   hasUnsavedChanges = true;
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
@@ -944,6 +1316,10 @@ function markUnsavedAndDebounce() {
 function manualSave() { saveDatabase(true); }
 
 function downloadJsonBackup() {
+  if (!isUnlocked) {
+    alert("⚠️ बैकअप डाउनलोड करने के लिए पहले पासवर्ड अनलॉक करें!");
+    return;
+  }
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(multiHospitalMaster, null, 2));
   const dlAnchor = document.createElement('a');
   dlAnchor.setAttribute("href", dataStr);
@@ -953,7 +1329,7 @@ function downloadJsonBackup() {
 }
 
 function resetCurrentHospitalRoster() {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   if (confirm("क्या आप इस अस्पताल का रोस्टर रीसेट करके खाली करना चाहते हैं?")) {
     const cur = getActiveHospitalData();
     cur.monthlyDuties = {};
@@ -982,7 +1358,7 @@ function getDaysInMonth(year, month) {
 }
 
 function onDateConfigChange() {
-  if (hasUnsavedChanges && isAdminUnlocked) {
+  if (hasUnsavedChanges && isUnlocked) {
     if (confirm("आपने इस महीने में बदलाव किए हैं। क्या आप अगला महीना चुनने से पहले इसे सेव करना चाहते हैं?")) {
       saveDatabase(false);
     }
@@ -991,7 +1367,7 @@ function onDateConfigChange() {
   currentYear = parseInt(document.getElementById("yearSelect").value);
   ensureMonthData(currentYear, currentMonth);
   renderRosterView();
-  applyAdminModeUI();
+  applySecurityUI();
   showToast(`📅 ${MONTH_NAMES[currentMonth]} ${currentYear} का रोस्टर लोड हुआ`);
 }
 
@@ -1103,14 +1479,14 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
   let row = `<tr>`;
   row += `<td>${idx + 1}</td>`;
   row += `<td class="staff-name-col">
-            <input type="text" class="staff-name-input" value="${staffName}" ${isAdminUnlocked ? '' : 'readonly'} onchange="modifyStaffName('${dept}', ${idx}, this.value)">
+            <input type="text" class="staff-name-input" value="${staffName}" ${isUnlocked ? '' : 'readonly'} onchange="modifyStaffName('${dept}', ${idx}, this.value)">
           </td>`;
 
   for (let d = 0; d < numDays; d++) {
     const val = dutiesArr[d] || "";
     const res = parseDutyCode(val);
     row += `<td class="${res.cls}">
-              <input type="text" class="duty-cell-input" value="${val}" ${isAdminUnlocked ? '' : 'readonly'}
+              <input type="text" class="duty-cell-input" value="${val}" ${isUnlocked ? '' : 'readonly'}
                 oninput="onDutyInput(this, '${dept}', '${staffName}', ${d})" 
                 onblur="recomputeTotals(${numDays})">
             </td>`;
@@ -1124,7 +1500,7 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
 }
 
 function onDutyInput(elem, dept, staffName, dayIdx) {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   const upperVal = elem.value.toUpperCase();
   elem.value = upperVal;
 
@@ -1166,7 +1542,7 @@ function recomputeTotals(numDays) {
 }
 
 function modifyStaffName(dept, idx, newName) {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   const currentHospital = getActiveHospitalData();
   const oldName = currentHospital.staffDirectory[dept][idx];
   const cleaned = newName.trim().toUpperCase();
@@ -1186,7 +1562,7 @@ function modifyStaffName(dept, idx, newName) {
 }
 
 function addEmployee() {
-  if (!isAdminUnlocked) return;
+  if (!isUnlocked) return;
   const dept = document.getElementById("targetDept").value.toLowerCase();
   const nameInput = document.getElementById("inputStaffName");
   const name = nameInput.value.trim().toUpperCase();
@@ -1205,7 +1581,7 @@ function addEmployee() {
 
   nameInput.value = "";
   renderRosterView();
-  applyAdminModeUI();
+  applySecurityUI();
   markUnsavedAndDebounce();
   showToast(`✅ ${name} को ${dept.toUpperCase()} में जोड़ दिया गया!`);
 }
@@ -1223,8 +1599,8 @@ function populateDeleteDropdown() {
   });
 }
 
-function deleteSelectedEmployee() {
-  if (!isAdminUnlocked) return;
+async function deleteSelectedEmployee() {
+  if (!isUnlocked) return;
   const dept = document.getElementById("deleteDept").value.toLowerCase();
   const sel = document.getElementById("deleteStaffSelect");
   const idx = parseInt(sel.value);
@@ -1235,7 +1611,22 @@ function deleteSelectedEmployee() {
     return;
   }
   const empName = currentHospital.staffDirectory[dept][idx];
-  if (confirm(`क्या आप "${empName}" को इस अस्पताल के रोस्टर से हटाना चाहते हैं?`)) {
+
+  const verifyPin = await askSecurePassword(
+    "कर्मचारी हटाने का सत्यापन",
+    `कर्मचारी "${empName}" को हटाने के लिए एडमिन या सुपर एडमिन पासवर्ड दर्ज करें:`,
+    "🗑️"
+  );
+  if (verifyPin === null) return;
+
+  const cleanPin = verifyPin.trim();
+  const hospPass = currentHospital.adminPassword || "OPD@IPD45";
+  if (cleanPin !== hospPass && cleanPin !== SUPER_ADMIN_PASS) {
+    alert("❌ गलत पासवर्ड! कर्मचारी को हटाने की अनुमति नहीं है।");
+    return;
+  }
+
+  if (confirm(`क्या आप सचमुच "${empName}" को हमेशा के लिए रोस्टर से हटाना चाहते हैं?`)) {
     currentHospital.staffDirectory[dept].splice(idx, 1);
     Object.keys(currentHospital.monthlyDuties).forEach(mKey => {
       if (currentHospital.monthlyDuties[mKey][dept]) {
@@ -1244,14 +1635,17 @@ function deleteSelectedEmployee() {
     });
 
     renderRosterView();
-    applyAdminModeUI();
+    applySecurityUI();
     markUnsavedAndDebounce();
     showToast(`🗑️ ${empName} को रोस्टर से हटा दिया गया!`);
   }
 }
 
-// ULTRA HD 300 DPI CRISP PDF DOWNLOAD (FOR ALL)
 function downloadPdfDirect() {
+  if (!isUnlocked) {
+    alert("⚠️ PDF डाउनलोड करने के लिए पहले पासवर्ड डालकर रोस्टर अनलॉक करें!");
+    return;
+  }
   showToast("⏳ Ultra HD PDF तैयार हो रही है (300 DPI)...");
   const element = document.getElementById('printArea');
   const monthName = MONTH_NAMES[currentMonth];
@@ -1287,8 +1681,11 @@ function downloadPdfDirect() {
   });
 }
 
-// WhatsApp Share (FOR ALL)
 function shareToWhatsApp() {
+  if (!isUnlocked) {
+    alert("⚠️ शेयर करने के लिए पहले पासवर्ड डालकर रोस्टर अनलॉक करें!");
+    return;
+  }
   const currentHospital = getActiveHospitalData();
   const hName = currentHospital.hospitalTitle;
   const monthName = MONTH_NAMES[currentMonth];
@@ -1336,8 +1733,11 @@ function shareToWhatsApp() {
   }
 }
 
-// Excel Export (FOR ALL)
 function exportDutyRosterToExcel() {
+  if (!isUnlocked) {
+    alert("⚠️ एक्सेल फाइल डाउनलोड करने के लिए पहले पासवर्ड डालकर रोस्टर अनलॉक करें!");
+    return;
+  }
   const currentHospital = getActiveHospitalData();
   const numDays = getDaysInMonth(currentYear, currentMonth);
   const mKey = getMonthKey(currentYear, currentMonth);
@@ -1398,15 +1798,14 @@ function exportDutyRosterToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, "Duty_Roster");
   const cleanTitle = (hName || "Hospital").replace(/[^a-zA-Z0-9]/g, "_").substring(0, 20);
   XLSX.writeFile(wb, `${cleanTitle}_Duty_Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.xlsx`);
-  showToast("📊 एक्सेल फाइल सफलता पूर्वक डाउनलोड हो गई!");
+  showToast("📊 एक्सेल फाइल डाउनलोड हो गई!");
 }
 
-// Initial Setup
 window.onload = () => {
   populateYearSelect();
   loadSavedDatabase();
   initRealtimeSync();
-  applyAdminModeUI();
+  applySecurityUI();
 };
 </script>
 </body>
