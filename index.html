@@ -523,17 +523,17 @@
 <div id="pwVaultModal" class="modal-overlay">
   <div class="modal-box" style="max-width: 680px;">
     <div style="font-size: 30px; margin-bottom: 6px;">🛡️</div>
-    <h3 style="margin: 0; color: #b45309; font-size: 17px;">Master Privacy Vault - All Hospital Passwords</h3>
+    <h3 style="margin: 0; color: #b45309; font-size: 17px;">Master Privacy Vault - All Passwords</h3>
     <p style="font-size: 12px; color: #64748b; margin: 6px 0 14px 0;">
-      यह सूची केवल आपके पर्सनल मास्टर पासवर्ड (Super Admin) से ही देखी और बदली जा सकती है।
+      यहाँ से आप सभी अस्पतालों के एडमिन पासवर्ड और अपना सुपर एडमिन (मास्टर) पासवर्ड देख व बदल सकते हैं।
     </p>
     <div style="max-height: 320px; overflow-y: auto;">
       <table class="pw-table">
         <thead>
           <tr>
             <th style="width: 35px;">#</th>
-            <th>Hospital Name</th>
-            <th>Admin Password</th>
+            <th>Target Name / Hospital</th>
+            <th>Current Password</th>
             <th style="width: 110px; text-align: center;">Action</th>
           </tr>
         </thead>
@@ -707,7 +707,7 @@
 
 <script>
 // ==============================================================
-// 1. MILITARY-GRADE SALTED HASH & ANTI-DEBUGGER PROTECTION
+// 1. MILITARY-GRADE SALTED HASH & SECURE VAULT
 // ==============================================================
 const SECRET_PEPPER = "Rinku_SuperAdmin_Salt_#992026!X";
 
@@ -752,7 +752,7 @@ document.onkeydown = function(e) {
 };
 
 // ==============================================================
-// 2. FIREBASE & MULTI-HOSPITAL DATA
+// 2. FIREBASE & MULTI-HOSPITAL ISOLATED SYSTEM
 // ==============================================================
 const FIREBASE_DB_URL = "https://tibbia-hospital-roster-default-rtdb.firebaseio.com/";
 
@@ -764,7 +764,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v1";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v3";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -776,13 +776,12 @@ let hasUnsavedChanges = false;
 
 let isUnlocked = false;
 let isSuperAdmin = false;
-let sessionSuperAdminKey = "OPD@IPD4545";
+let sessionSuperAdminKey = "OPD@IPD4545"; // Default Master Key
 
 function createBlankHospitalRoster(title, customHash, encVault) {
   return {
     hospitalTitle: title || "NEW HOSPITAL / CENTER",
     adminHash: customHash || TIBBIA_SALTED_HASH,
-    adminPassword: "OPD@IPD45",
     encVaultToken: encVault || encryptToken("OPD@IPD45", "OPD@IPD4545"),
     staffDirectory: {
       opd: ["STAFF 1", "STAFF 2"],
@@ -794,11 +793,11 @@ function createBlankHospitalRoster(title, customHash, encVault) {
 
 let multiHospitalMaster = {
   activeHospitalId: "tibbia_karol_bagh",
+  masterPasswordToken: encryptToken("OPD@IPD4545", "Rinku_SuperAdmin_Key_2026"), // Encrypted master key storage
   hospitals: {
     "tibbia_karol_bagh": {
       hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
       adminHash: TIBBIA_SALTED_HASH,
-      adminPassword: "OPD@IPD45",
       encVaultToken: encryptToken("OPD@IPD45", "OPD@IPD4545"),
       staffDirectory: {
         opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
@@ -963,16 +962,25 @@ async function triggerLoginOrUnlock() {
   const cleanPin = enteredPin.trim();
   const inputSaltedHash = await computeSaltedHash(cleanPin);
   const hospHash = curHosp.adminHash || TIBBIA_SALTED_HASH;
-  const legacyPass = curHosp.adminPassword || "OPD@IPD45";
 
-  if (cleanPin === "OPD@IPD4545" || inputSaltedHash === MASTER_SALTED_HASH) {
+  // Retrieve Master Key dynamically
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
+  }
+
+  const masterSaltedHashFromInput = await computeSaltedHash(cleanPin);
+  const masterRealHash = await computeSaltedHash(activeMasterKey);
+
+  if (cleanPin === activeMasterKey || masterSaltedHashFromInput === masterRealHash || inputSaltedHash === MASTER_SALTED_HASH) {
     isSuperAdmin = true;
     isUnlocked = true;
-    sessionSuperAdminKey = "OPD@IPD4545";
+    sessionSuperAdminKey = activeMasterKey;
     applySecurityUI();
-    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप किसी भी अस्पताल का डेटा देख और बदल सकते हैं।");
+    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप सभी अस्पतालों का डेटा देख और बदल सकते हैं।");
     showToast("👑 Super Admin Active!");
-  } else if (cleanPin === legacyPass || inputSaltedHash === hospHash) {
+  } else if (inputSaltedHash === hospHash) {
     isSuperAdmin = false;
     isUnlocked = true;
     applySecurityUI();
@@ -1075,16 +1083,21 @@ async function switchHospitalWithAuth(targetHId) {
   const cleanPin = enteredPin.trim();
   const inputSaltedHash = await computeSaltedHash(cleanPin);
   const hospHash = targetHosp.adminHash || TIBBIA_SALTED_HASH;
-  const legacyPass = targetHosp.adminPassword || "OPD@IPD45";
 
-  if (cleanPin === "OPD@IPD4545" || inputSaltedHash === MASTER_SALTED_HASH) {
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
+  }
+
+  if (cleanPin === activeMasterKey || inputSaltedHash === MASTER_SALTED_HASH) {
     isSuperAdmin = true;
     isUnlocked = true;
-    sessionSuperAdminKey = "OPD@IPD4545";
+    sessionSuperAdminKey = activeMasterKey;
     multiHospitalMaster.activeHospitalId = targetHId;
     refreshHospitalUI();
     showToast("👑 Super Admin Mode!");
-  } else if (cleanPin === legacyPass || inputSaltedHash === hospHash) {
+  } else if (inputSaltedHash === hospHash) {
     isUnlocked = true;
     multiHospitalMaster.activeHospitalId = targetHId;
     refreshHospitalUI();
@@ -1098,7 +1111,7 @@ async function switchHospitalWithAuth(targetHId) {
 }
 
 // ==============================================================
-// 4. SUPER ADMIN EXCLUSIVE PASSWORDS VAULT
+// 4. SUPER ADMIN EXCLUSIVE PASSWORDS VAULT (NOW INCLUDES ADMIN PASSWORD CHANGE)
 // ==============================================================
 function openPasswordVault() {
   if (!isSuperAdmin) {
@@ -1106,17 +1119,35 @@ function openPasswordVault() {
     return;
   }
 
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
+  }
+
   const tbody = document.getElementById("pwVaultTableBody");
   tbody.innerHTML = "";
   let idx = 1;
 
+  // 1. Row for Super Admin Master Password
+  const trAdmin = document.createElement("tr");
+  trAdmin.style.background = "#fef3c7";
+  trAdmin.innerHTML = `
+    <td>${idx++}</td>
+    <td style="font-weight:800; color:#b45309;">👑 Super Admin Master Password (आपका मुख्य पासवर्ड)</td>
+    <td><span class="pw-code">${activeMasterKey}</span></td>
+    <td style="text-align: center;">
+      <button type="button" class="btn-admin" style="padding: 4px 8px; font-size: 11px; background: #d97706;" onclick="changeMasterAdminPassword()">
+        ✏️ Change
+      </button>
+    </td>
+  `;
+  tbody.appendChild(trAdmin);
+
+  // 2. Rows for each hospital
   Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
     const hosp = multiHospitalMaster.hospitals[hId];
-    let decPassword = hosp.adminPassword || "OPD@IPD45";
-    if (hosp.encVaultToken) {
-      const decrypted = decryptToken(hosp.encVaultToken, sessionSuperAdminKey);
-      if (decrypted && decrypted !== "********") decPassword = decrypted;
-    }
+    const decPassword = hosp.encVaultToken ? decryptToken(hosp.encVaultToken, activeMasterKey) : "********";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1135,16 +1166,47 @@ function openPasswordVault() {
   document.getElementById("pwVaultModal").style.display = "flex";
 }
 
+async function changeMasterAdminPassword() {
+  if (!isSuperAdmin) return;
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
+  }
+
+  const newMaster = prompt("अपना नया सुपर एडमिन (मास्टर) पासवर्ड दर्ज करें:", activeMasterKey);
+  if (newMaster === null) return;
+
+  const cleanMaster = newMaster.trim();
+  if (!cleanMaster) {
+    alert("⚠️ मास्टर पासवर्ड खाली नहीं छोड़ा जा सकता!");
+    return;
+  }
+
+  const confirmChange = confirm(`⚠️ मास्टर पासवर्ड बदलने की पुष्टि:\n\nनया मास्टर पासवर्ड: ${cleanMaster}\n\nक्या आप वाकई अपना सुपर एडमिन पासवर्ड बदलना चाहते हैं?`);
+  if (!confirmChange) return;
+
+  multiHospitalMaster.masterPasswordToken = encryptToken(cleanMaster, "Rinku_SuperAdmin_Key_2026");
+  sessionSuperAdminKey = cleanMaster;
+
+  saveDatabase(false);
+  openPasswordVault();
+  alert(`✅ आपका सुपर एडमिन मास्टर पासवर्ड सफलतापूर्व बदल कर "${cleanMaster}" कर दिया गया है!`);
+  showToast("👑 Master Password Updated!");
+}
+
 async function changeHospitalPasswordFromVault(hId) {
   if (!isSuperAdmin) return;
   const targetHosp = multiHospitalMaster.hospitals[hId];
   if (!targetHosp) return;
 
-  let currentPass = targetHosp.adminPassword || "OPD@IPD45";
-  if (targetHosp.encVaultToken) {
-    const dec = decryptToken(targetHosp.encVaultToken, sessionSuperAdminKey);
-    if (dec && dec !== "********") currentPass = dec;
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
   }
+
+  const currentPass = targetHosp.encVaultToken ? decryptToken(targetHosp.encVaultToken, activeMasterKey) : "";
 
   const newPass = prompt(`अस्पताल "${targetHosp.hospitalTitle}" का नया एडमिन पासवर्ड दर्ज करें:`, currentPass);
   if (newPass === null) return;
@@ -1156,15 +1218,14 @@ async function changeHospitalPasswordFromVault(hId) {
   }
 
   const newSaltedHash = await computeSaltedHash(cleanPass);
-  const newEncVault = encryptToken(cleanPass, sessionSuperAdminKey);
+  const newEncVault = encryptToken(cleanPass, activeMasterKey);
 
   targetHosp.adminHash = newSaltedHash;
   targetHosp.encVaultToken = newEncVault;
-  targetHosp.adminPassword = cleanPass;
 
   saveDatabase(false);
   openPasswordVault();
-  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड "${cleanPass}" सफलतापूर्वक सेट और सेव हो गया है!`);
+  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड सफलतापूर्वक सेट और सेव हो गया है!`);
   showToast("🔑 पासवर्ड अपडेट हो गया!");
 }
 
@@ -1173,7 +1234,7 @@ function closePasswordVault() {
 }
 
 // ==============================================================
-// 5. TRUE REALTIME SYNC (DIRECT MIRROR, NO GHOST HOSPITALS)
+// 5. TRUE REALTIME SYNC
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1252,6 +1313,12 @@ async function promptAddNewHospital() {
   if (!newName || !newName.trim()) return;
   const cleanTitle = newName.trim().toUpperCase();
 
+  let activeMasterKey = "OPD@IPD4545";
+  if (multiHospitalMaster.masterPasswordToken) {
+    const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
+    if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
+  }
+
   const enteredPass = await askSecurePassword(
     "नये अस्पताल का पासवर्ड सेट करें",
     `अस्पताल "${cleanTitle}" का नया एडमिन पासवर्ड बनाएं:`,
@@ -1266,19 +1333,17 @@ async function promptAddNewHospital() {
   }
 
   const saltedHash = await computeSaltedHash(cleanPass);
-  const encVault = encryptToken(cleanPass, "OPD@IPD4545");
+  const encVault = encryptToken(cleanPass, activeMasterKey);
   const newId = "hosp_" + Date.now();
   multiHospitalMaster.hospitals[newId] = createBlankHospitalRoster(cleanTitle, saltedHash, encVault);
-  multiHospitalMaster.hospitals[newId].adminPassword = cleanPass;
   multiHospitalMaster.activeHospitalId = newId;
   isUnlocked = true;
 
   refreshHospitalUI();
   saveDatabase(false);
-  alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
+  alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है!`);
 }
 
-// 🗑️ PERMANENT DELETE (REMOVES DIRECTLY FROM FIREBASE AND UI)
 async function deleteCurrentHospital() {
   if (!isUnlocked) {
     alert("⚠️ अस्पताल हटाने के लिए पहले रोस्टर अनलॉक करें!");
@@ -1303,9 +1368,8 @@ async function deleteCurrentHospital() {
     const cleanPin = verifyPin.trim();
     const inputSaltedHash = await computeSaltedHash(cleanPin);
     const hospHash = currentHospital.adminHash || TIBBIA_SALTED_HASH;
-    const legacyPass = currentHospital.adminPassword || "OPD@IPD45";
 
-    if (cleanPin !== "OPD@IPD4545" && cleanPin !== legacyPass && inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
+    if (inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
       alert("❌ गलत पासवर्ड! अस्पताल रोस्टर हटाने की अनुमति नहीं है।");
       return;
     }
@@ -1313,13 +1377,10 @@ async function deleteCurrentHospital() {
 
   if (confirm(`⚠️ क्या आप वाकई "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
     const deletingId = multiHospitalMaster.activeHospitalId;
-    
-    // 1. Delete locally
     delete multiHospitalMaster.hospitals[deletingId];
     multiHospitalMaster.activeHospitalId = Object.keys(multiHospitalMaster.hospitals)[0];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
     
-    // 2. Direct removal from Firebase Node so it never returns
     if (firebaseDb) {
       firebaseDb.ref(`multi_hospital_rosters/hospitals/${deletingId}`).remove();
       firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster);
@@ -1354,7 +1415,7 @@ function refreshHospitalUI() {
 window.addEventListener("beforeunload", function (e) {
   if (hasUnsavedChanges && isUnlocked) {
     e.preventDefault();
-    e.returnValue = "आपने ड्यूटी में बदलाव किए हैं। क्या आप बाहर जाने से पहले सेव करना चाहते हैं?";
+    e.returnValue = "आपने बदलाव किए हैं। क्या आप बाहर जाने से पहले सेव करना चाहते हैं?";
     return e.returnValue;
   }
 });
@@ -1697,9 +1758,8 @@ async function deleteSelectedEmployee() {
   const cleanPin = verifyPin.trim();
   const inputSaltedHash = await computeSaltedHash(cleanPin);
   const hospHash = currentHospital.adminHash || TIBBIA_SALTED_HASH;
-  const legacyPass = currentHospital.adminPassword || "OPD@IPD45";
 
-  if (cleanPin !== "OPD@IPD4545" && cleanPin !== legacyPass && inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
+  if (inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
     alert("❌ गलत पासवर्ड! कर्मचारी को हटाने की अनुमति नहीं है।");
     return;
   }
