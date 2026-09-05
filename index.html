@@ -793,7 +793,6 @@ function createBlankHospitalRoster(title, customHash, encVault) {
   };
 }
 
-// 🏥 BOTH HOSPITALS CONFIGURED AS DEFAULTS SO NONE DISAPPEARS
 let multiHospitalMaster = {
   activeHospitalId: "tibbia_karol_bagh",
   hospitals: {
@@ -1201,7 +1200,6 @@ function initRealtimeSync() {
   firebaseDb.ref("multi_hospital_rosters").on("value", (snapshot) => {
     const cloudData = snapshot.val();
     if (cloudData && cloudData.hospitals) {
-      // Smart Merge: Don't drop any hospital
       Object.keys(cloudData.hospitals).forEach(hId => {
         multiHospitalMaster.hospitals[hId] = cloudData.hospitals[hId];
       });
@@ -1309,8 +1307,13 @@ async function promptAddNewHospital() {
   alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
 }
 
+// 🗑️ PERMANENT DELETE (STAYS UNLOCKED & NEVER LOCKS SUPER ADMIN OUT)
 async function deleteCurrentHospital() {
-  if (!isUnlocked) return;
+  if (!isUnlocked) {
+    alert("⚠️ अस्पताल हटाने के लिए पहले रोस्टर अनलॉक करें!");
+    return;
+  }
+
   const currentHospital = getActiveHospitalData();
   const keys = Object.keys(multiHospitalMaster.hospitals);
   if (keys.length <= 1) {
@@ -1318,30 +1321,37 @@ async function deleteCurrentHospital() {
     return;
   }
 
-  const verifyPin = await askSecurePassword(
-    "अस्पताल रोस्टर हटाने का सत्यापन",
-    `"${currentHospital.hospitalTitle}" को पूरी तरह मिटाने के लिए एडमिन पासवर्ड दर्ज करें:`,
-    "⚠️"
-  );
-  if (verifyPin === null) return;
+  if (!isSuperAdmin) {
+    const verifyPin = await askSecurePassword(
+      "अस्पताल रोस्टर हटाने का सत्यापन",
+      `"${currentHospital.hospitalTitle}" को पूरी तरह मिटाने के लिए एडमिन पासवर्ड दर्ज करें:`,
+      "⚠️"
+    );
+    if (verifyPin === null) return;
 
-  const cleanPin = verifyPin.trim();
-  const inputSaltedHash = await computeSaltedHash(cleanPin);
-  const hospHash = currentHospital.adminHash || TIBBIA_SALTED_HASH;
-  const legacyPass = currentHospital.adminPassword || "OPD@IPD45";
+    const cleanPin = verifyPin.trim();
+    const inputSaltedHash = await computeSaltedHash(cleanPin);
+    const hospHash = currentHospital.adminHash || TIBBIA_SALTED_HASH;
+    const legacyPass = currentHospital.adminPassword || "OPD@IPD45";
 
-  if (cleanPin !== "OPD@IPD4545" && cleanPin !== legacyPass && inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
-    alert("❌ गलत पासवर्ड! अस्पताल रोस्टर हटाने की अनुमति नहीं है।");
-    return;
+    if (cleanPin !== "OPD@IPD4545" && cleanPin !== legacyPass && inputSaltedHash !== hospHash && inputSaltedHash !== MASTER_SALTED_HASH) {
+      alert("❌ गलत पासवर्ड! अस्पताल रोस्टर हटाने की अनुमति नहीं है।");
+      return;
+    }
   }
 
-  if (confirm(`⚠️ अंतिम चेतावनी: क्या आप "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
-    delete multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
+  if (confirm(`⚠️ क्या आप वाकई "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
+    const deletingId = multiHospitalMaster.activeHospitalId;
+    delete multiHospitalMaster.hospitals[deletingId];
+    
+    // Switch to remaining hospital
     multiHospitalMaster.activeHospitalId = Object.keys(multiHospitalMaster.hospitals)[0];
-    isUnlocked = false;
+    
     refreshHospitalUI();
     saveDatabase(false);
-    showToast("🗑️ अस्पताल रोस्टर हटा दिया गया!");
+    
+    alert("🗑️ अस्पताल रोस्टर सफलतापूर्वक हटा दिया गया!");
+    showToast("🗑️ अस्पताल डिलीट हो गया!");
   }
 }
 
