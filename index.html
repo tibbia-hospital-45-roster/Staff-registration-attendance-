@@ -165,7 +165,7 @@
     border: 1.5px solid #0284c7;
     background: #ffffff;
     color: #0369a1;
-    max-width: 320px;
+    max-width: 380px;
   }
   .action-buttons {
     display: flex;
@@ -752,7 +752,7 @@ document.onkeydown = function(e) {
 };
 
 // ==============================================================
-// 2. FIREBASE & MULTI-HOSPITAL ISOLATED SYSTEM (BOTH HOSPITALS PRE-LOADED)
+// 2. FIREBASE & MULTI-HOSPITAL DATA
 // ==============================================================
 const FIREBASE_DB_URL = "https://tibbia-hospital-roster-default-rtdb.firebaseio.com/";
 
@@ -764,8 +764,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const PRIMARY_STORAGE_KEY = "hospital_multicenter_roster_v16";
-const SECURE_STORAGE_KEY = "hospital_multicenter_roster_v18_salted";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v1";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -806,17 +805,6 @@ let multiHospitalMaster = {
         ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
       },
       monthlyDuties: {}
-    },
-    "babu_jagjivan_ram": {
-      hospitalTitle: "BABU JAGJIVAN RAM MEMORIAL HOSPITAL, JAHANGIRPURI, DELHI - 110033",
-      adminHash: TIBBIA_SALTED_HASH,
-      adminPassword: "OPD@IPD45",
-      encVaultToken: encryptToken("OPD@IPD45", "OPD@IPD4545"),
-      staffDirectory: {
-        opd: ["STAFF 1", "STAFF 2"],
-        ipd: ["STAFF A", "STAFF B"]
-      },
-      monthlyDuties: {}
     }
   }
 };
@@ -825,6 +813,9 @@ function getActiveHospitalData() {
   if (!multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId]) {
     const keys = Object.keys(multiHospitalMaster.hospitals);
     multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "tibbia_karol_bagh";
+    if (!multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId]) {
+      multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId] = createBlankHospitalRoster("AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL", TIBBIA_SALTED_HASH, encryptToken("OPD@IPD45", "OPD@IPD4545"));
+    }
   }
   return multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
 }
@@ -979,7 +970,7 @@ async function triggerLoginOrUnlock() {
     isUnlocked = true;
     sessionSuperAdminKey = "OPD@IPD4545";
     applySecurityUI();
-    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप किसी भी अस्पताल का डेटा देख और ड्यूटी भर सकते हैं।");
+    alert("👑 Super Admin Unlocked!\nमास्टर एक्सेस स्वीकृत हुआ। आप किसी भी अस्पताल का डेटा देख और बदल सकते हैं।");
     showToast("👑 Super Admin Active!");
   } else if (cleanPin === legacyPass || inputSaltedHash === hospHash) {
     isSuperAdmin = false;
@@ -1182,7 +1173,7 @@ function closePasswordVault() {
 }
 
 // ==============================================================
-// 5. CLOUD SYNC & MERGE (PREVENTS ANY HOSPITAL FROM DISAPPEARING)
+// 5. TRUE REALTIME SYNC (DIRECT MIRROR, NO GHOST HOSPITALS)
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1199,26 +1190,12 @@ function initRealtimeSync() {
 
   firebaseDb.ref("multi_hospital_rosters").on("value", (snapshot) => {
     const cloudData = snapshot.val();
-    if (cloudData && cloudData.hospitals) {
-      Object.keys(cloudData.hospitals).forEach(hId => {
-        multiHospitalMaster.hospitals[hId] = cloudData.hospitals[hId];
-      });
-      localStorage.setItem(PRIMARY_STORAGE_KEY, JSON.stringify(multiHospitalMaster));
+    if (cloudData && cloudData.hospitals && Object.keys(cloudData.hospitals).length > 0) {
+      multiHospitalMaster = cloudData;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
       refreshHospitalUI();
       if (dot) dot.className = "sync-dot";
       if (txt) txt.innerText = "Multi-Hospital Synced ☁️";
-    }
-  });
-
-  firebaseDb.ref("multi_hospital_rosters_salted_v3").once("value", (snapshot) => {
-    const v3Data = snapshot.val();
-    if (v3Data && v3Data.hospitals) {
-      Object.keys(v3Data.hospitals).forEach(hId => {
-        if (!multiHospitalMaster.hospitals[hId]) {
-          multiHospitalMaster.hospitals[hId] = v3Data.hospitals[hId];
-        }
-      });
-      refreshHospitalUI();
     }
   });
 }
@@ -1229,13 +1206,11 @@ function saveDatabase(showAlertPopup = true) {
     return;
   }
 
-  localStorage.setItem(PRIMARY_STORAGE_KEY, JSON.stringify(multiHospitalMaster));
-  localStorage.setItem(SECURE_STORAGE_KEY, JSON.stringify(multiHospitalMaster));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
   hasUnsavedChanges = false;
 
   if (firebaseDb) {
-    firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster);
-    firebaseDb.ref("multi_hospital_rosters_salted_v3").set(multiHospitalMaster).then(() => {
+    firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster).then(() => {
       if (showAlertPopup) {
         alert("✅ सभी अस्पतालों की ड्यूटी ऑनलाइन सुरक्षित सेव हो गई है!");
         showToast("☁️ ऑनलाइन सिंक हो गया!");
@@ -1250,15 +1225,11 @@ function saveDatabase(showAlertPopup = true) {
 
 function loadSavedDatabase() {
   try {
-    const rawV16 = localStorage.getItem(PRIMARY_STORAGE_KEY);
-    const rawV18 = localStorage.getItem(SECURE_STORAGE_KEY);
-    const raw = rawV16 || rawV18;
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("hospital_multicenter_roster_v16");
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.hospitals) {
-        Object.keys(parsed.hospitals).forEach(hId => {
-          multiHospitalMaster.hospitals[hId] = parsed.hospitals[hId];
-        });
+        multiHospitalMaster = parsed;
       }
     }
   } catch (err) {}
@@ -1307,7 +1278,7 @@ async function promptAddNewHospital() {
   alert(`✅ नया रोस्टर "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
 }
 
-// 🗑️ PERMANENT DELETE (STAYS UNLOCKED & NEVER LOCKS SUPER ADMIN OUT)
+// 🗑️ PERMANENT DELETE (REMOVES DIRECTLY FROM FIREBASE AND UI)
 async function deleteCurrentHospital() {
   if (!isUnlocked) {
     alert("⚠️ अस्पताल हटाने के लिए पहले रोस्टर अनलॉक करें!");
@@ -1342,15 +1313,20 @@ async function deleteCurrentHospital() {
 
   if (confirm(`⚠️ क्या आप वाकई "${currentHospital.hospitalTitle}" का पूरा रोस्टर हमेशा के लिए हटाना चाहते हैं?`)) {
     const deletingId = multiHospitalMaster.activeHospitalId;
-    delete multiHospitalMaster.hospitals[deletingId];
     
-    // Switch to remaining hospital
+    // 1. Delete locally
+    delete multiHospitalMaster.hospitals[deletingId];
     multiHospitalMaster.activeHospitalId = Object.keys(multiHospitalMaster.hospitals)[0];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
+    
+    // 2. Direct removal from Firebase Node so it never returns
+    if (firebaseDb) {
+      firebaseDb.ref(`multi_hospital_rosters/hospitals/${deletingId}`).remove();
+      firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster);
+    }
     
     refreshHospitalUI();
-    saveDatabase(false);
-    
-    alert("🗑️ अस्पताल रोस्टर सफलतापूर्वक हटा दिया गया!");
+    alert("🗑️ अस्पताल रोस्टर हमेशा के लिए हटा दिया गया!");
     showToast("🗑️ अस्पताल डिलीट हो गया!");
   }
 }
