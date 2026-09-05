@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -764,7 +763,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v3";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v4";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -793,7 +792,7 @@ function createBlankHospitalRoster(title, customHash, encVault) {
 
 let multiHospitalMaster = {
   activeHospitalId: "tibbia_karol_bagh",
-  masterPasswordToken: encryptToken("OPD@IPD4545", "Rinku_SuperAdmin_Key_2026"), // Encrypted master key storage
+  masterPasswordToken: encryptToken("OPD@IPD4545", "Rinku_SuperAdmin_Key_2026"),
   hospitals: {
     "tibbia_karol_bagh": {
       hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
@@ -935,7 +934,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================================================
-// 3. SECURE HASH-BASED AUTHENTICATION
+// 3. SECURE AUTHENTICATION (DYNAMIC HASH MATCHING)
 // ==============================================================
 async function triggerLoginOrUnlock() {
   if (isUnlocked) {
@@ -963,17 +962,15 @@ async function triggerLoginOrUnlock() {
   const inputSaltedHash = await computeSaltedHash(cleanPin);
   const hospHash = curHosp.adminHash || TIBBIA_SALTED_HASH;
 
-  // Retrieve Master Key dynamically
   let activeMasterKey = "OPD@IPD4545";
   if (multiHospitalMaster.masterPasswordToken) {
     const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
     if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
   }
 
-  const masterSaltedHashFromInput = await computeSaltedHash(cleanPin);
   const masterRealHash = await computeSaltedHash(activeMasterKey);
 
-  if (cleanPin === activeMasterKey || masterSaltedHashFromInput === masterRealHash || inputSaltedHash === MASTER_SALTED_HASH) {
+  if (cleanPin === activeMasterKey || inputSaltedHash === masterRealHash || inputSaltedHash === MASTER_SALTED_HASH) {
     isSuperAdmin = true;
     isUnlocked = true;
     sessionSuperAdminKey = activeMasterKey;
@@ -1089,8 +1086,9 @@ async function switchHospitalWithAuth(targetHId) {
     const decMaster = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
     if (decMaster && decMaster !== "********") activeMasterKey = decMaster;
   }
+  const masterRealHash = await computeSaltedHash(activeMasterKey);
 
-  if (cleanPin === activeMasterKey || inputSaltedHash === MASTER_SALTED_HASH) {
+  if (cleanPin === activeMasterKey || inputSaltedHash === masterRealHash || inputSaltedHash === MASTER_SALTED_HASH) {
     isSuperAdmin = true;
     isUnlocked = true;
     sessionSuperAdminKey = activeMasterKey;
@@ -1111,7 +1109,7 @@ async function switchHospitalWithAuth(targetHId) {
 }
 
 // ==============================================================
-// 4. SUPER ADMIN EXCLUSIVE PASSWORDS VAULT (NOW INCLUDES ADMIN PASSWORD CHANGE)
+// 4. SUPER ADMIN VAULT & PASSWORD UPDATE SYSTEM
 // ==============================================================
 function openPasswordVault() {
   if (!isSuperAdmin) {
@@ -1129,12 +1127,12 @@ function openPasswordVault() {
   tbody.innerHTML = "";
   let idx = 1;
 
-  // 1. Row for Super Admin Master Password
+  // 1. Super Admin Row
   const trAdmin = document.createElement("tr");
   trAdmin.style.background = "#fef3c7";
   trAdmin.innerHTML = `
     <td>${idx++}</td>
-    <td style="font-weight:800; color:#b45309;">👑 Super Admin Master Password (आपका मुख्य पासवर्ड)</td>
+    <td style="font-weight:800; color:#b45309;">👑 Super Admin Master Password</td>
     <td><span class="pw-code">${activeMasterKey}</span></td>
     <td style="text-align: center;">
       <button type="button" class="btn-admin" style="padding: 4px 8px; font-size: 11px; background: #d97706;" onclick="changeMasterAdminPassword()">
@@ -1144,7 +1142,7 @@ function openPasswordVault() {
   `;
   tbody.appendChild(trAdmin);
 
-  // 2. Rows for each hospital
+  // 2. Hospitals Rows
   Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
     const hosp = multiHospitalMaster.hospitals[hId];
     const decPassword = hosp.encVaultToken ? decryptToken(hosp.encVaultToken, activeMasterKey) : "********";
@@ -1183,15 +1181,14 @@ async function changeMasterAdminPassword() {
     return;
   }
 
-  const confirmChange = confirm(`⚠️ मास्टर पासवर्ड बदलने की पुष्टि:\n\nनया मास्टर पासवर्ड: ${cleanMaster}\n\nक्या आप वाकई अपना सुपर एडमिन पासवर्ड बदलना चाहते हैं?`);
-  if (!confirmChange) return;
+  if (!confirm(`⚠️ नया मास्टर पासवर्ड: "${cleanMaster}"\n\nक्या आप वाकई इसे बदलना चाहते हैं?`)) return;
 
   multiHospitalMaster.masterPasswordToken = encryptToken(cleanMaster, "Rinku_SuperAdmin_Key_2026");
   sessionSuperAdminKey = cleanMaster;
 
   saveDatabase(false);
   openPasswordVault();
-  alert(`✅ आपका सुपर एडमिन मास्टर पासवर्ड सफलतापूर्व बदल कर "${cleanMaster}" कर दिया गया है!`);
+  alert(`✅ मास्टर पासवर्ड सफलतापूर्वक बदलकर "${cleanMaster}" कर दिया गया है!`);
   showToast("👑 Master Password Updated!");
 }
 
@@ -1217,6 +1214,7 @@ async function changeHospitalPasswordFromVault(hId) {
     return;
   }
 
+  // Generate new cryptographic salted hash and encrypted cipher
   const newSaltedHash = await computeSaltedHash(cleanPass);
   const newEncVault = encryptToken(cleanPass, activeMasterKey);
 
@@ -1225,7 +1223,7 @@ async function changeHospitalPasswordFromVault(hId) {
 
   saveDatabase(false);
   openPasswordVault();
-  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड सफलतापूर्वक सेट और सेव हो गया है!`);
+  alert(`✅ "${targetHosp.hospitalTitle}" का नया पासवर्ड तुरंत अपडेट और सेव हो गया है!`);
   showToast("🔑 पासवर्ड अपडेट हो गया!");
 }
 
@@ -1273,7 +1271,7 @@ function saveDatabase(showAlertPopup = true) {
   if (firebaseDb) {
     firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster).then(() => {
       if (showAlertPopup) {
-        alert("✅ सभी अस्पतालों की ड्यूटी ऑनलाइन सुरक्षित सेव हो गई है!");
+        alert("✅ सभी बदलाव और नए पासवर्ड ऑनलाइन सुरक्षित सेव हो गए हैं!");
         showToast("☁️ ऑनलाइन सिंक हो गया!");
       }
     }).catch(() => {
