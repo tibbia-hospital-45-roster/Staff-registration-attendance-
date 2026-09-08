@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -88,7 +89,7 @@
     border-left: 4px solid #10b981;
   }
 
-  /* 👑 WELCOME OWNER OVERLAY ANIMATION */
+  /* 👑 WELCOME OWNER ANIMATION MODAL */
   #ownerWelcomeModal {
     display: none;
     position: fixed;
@@ -493,6 +494,14 @@
       <button class="btn-del-action" onclick="safeExecute(deleteSelectedEmployee)">🗑️ Delete Name</button>
     </div>
   </div>
+
+  <!-- ✍️ SIGNATURE CONTROLS (Only visible when unlocked) -->
+  <div class="staff-controls admin-only-elem" style="margin-top: 10px; border-top: 1px dashed #cbd5e1;">
+    <b>Signature Names:</b>
+    <input type="text" id="inputPreparedBy" placeholder="Prepared By" style="width: 150px;" oninput="updateSignaturesFromPanel()">
+    <input type="text" id="inputVerifiedBy" placeholder="Verified By" style="width: 150px;" oninput="updateSignaturesFromPanel()">
+    <input type="text" id="inputIncharge" placeholder="Incharge" style="width: 150px;" oninput="updateSignaturesFromPanel()">
+  </div>
 </div>
 
 <!-- ROSTER LOCKED NOTICE -->
@@ -542,9 +551,9 @@
     </div>
 
     <div class="auth-signatures">
-      <div><br>___________________<br><span id="signPrep" contenteditable="false"><b>Rinku</b></span><br>Prepared By</div>
-      <div><br>___________________<br><span id="signVer" contenteditable="false"><b>Sushil</b></span><br>Verified By</div>
-      <div><br>___________________<br><span id="signInch" contenteditable="false"><b>Chandra Bhan Sir</b></span><br>Incharge</div>
+      <div><br>___________________<br><span id="signPrepDisplay"><b></b></span><br>Prepared By</div>
+      <div><br>___________________<br><span id="signVerDisplay"><b></b></span><br>Verified By</div>
+      <div><br>___________________<br><span id="signInchDisplay"><b></b></span><br>Incharge</div>
     </div>
   </div>
 
@@ -610,7 +619,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v9";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v13";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -629,9 +638,14 @@ function createBlankHospitalRoster(title, customHash, encVault) {
     hospitalTitle: title || "NEW HOSPITAL / CENTER",
     adminHash: customHash,
     encVaultToken: encVault,
+    signatures: {
+      preparedBy: "",
+      verifiedBy: "",
+      incharge: ""
+    },
     staffDirectory: {
-      opd: ["STAFF 1", "STAFF 2"],
-      ipd: ["STAFF A", "STAFF B"]
+      opd: [],
+      ipd: []
     },
     monthlyDuties: {}
   };
@@ -645,6 +659,11 @@ let multiHospitalMaster = {
       hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
       adminHash: "ea7357ffa1ca26bbd351aeefd3e79cbc7c48b7cc223c35ed50ab28fe4984e3e9",
       encVaultToken: encryptToken("OPD@IPD45", "Rinku_OPD_8383"),
+      signatures: {
+        preparedBy: "RINKU",
+        verifiedBy: "SUSHIL",
+        incharge: "CHANDRA BHAN SIR"
+      },
       staffDirectory: {
         opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
         ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
@@ -801,7 +820,7 @@ async function triggerLoginOrUnlock() {
   if (cleanPin === masterKey || inputHash === masterHash) {
     isSuperAdmin = true; isUnlocked = true; sessionSuperAdminKey = masterKey;
     applySecurityUI();
-    showOwnerWelcomeAnimation(); // 👑 Trigger Owner Animation!
+    showOwnerWelcomeAnimation();
   } else if (curHosp.adminHash && inputHash === curHosp.adminHash) {
     isSuperAdmin = false; isUnlocked = true;
     applySecurityUI();
@@ -820,6 +839,9 @@ function applySecurityUI() {
   const badge = document.getElementById("adminBadge");
   const btn = document.getElementById("btnAdminToggle");
   const hName = document.getElementById("hospitalNameDisplay");
+  const pInput = document.getElementById("inputPreparedBy");
+  const vInput = document.getElementById("inputVerifiedBy");
+  const iInput = document.getElementById("inputIncharge");
 
   if (isUnlocked) {
     printArea.style.display = "block";
@@ -839,6 +861,10 @@ function applySecurityUI() {
     }
 
     if (hName) hName.contentEditable = "true";
+    if (pInput) pInput.readOnly = false;
+    if (vInput) vInput.readOnly = false;
+    if (iInput) iInput.readOnly = false;
+
     document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(i => i.readOnly = false);
   } else {
     printArea.style.display = "none";
@@ -849,6 +875,10 @@ function applySecurityUI() {
     btn.className = "btn-admin"; btn.innerHTML = "🔐 Unlock Roster";
 
     if (hName) hName.contentEditable = "false";
+    if (pInput) pInput.readOnly = true;
+    if (vInput) vInput.readOnly = true;
+    if (iInput) iInput.readOnly = true;
+
     document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(i => i.readOnly = true);
   }
 }
@@ -880,7 +910,7 @@ async function switchHospitalWithAuth(targetHId) {
     isSuperAdmin = true; isUnlocked = true; sessionSuperAdminKey = masterKey;
     multiHospitalMaster.activeHospitalId = targetHId;
     applySecurityUI();
-    showOwnerWelcomeAnimation(); // 👑 Trigger Owner Animation!
+    showOwnerWelcomeAnimation();
   } else if (targetHosp.adminHash && inputHash === targetHosp.adminHash) {
     isUnlocked = true;
     multiHospitalMaster.activeHospitalId = targetHId;
@@ -908,7 +938,6 @@ async function openPasswordVault() {
   tbody.innerHTML = "";
   let idx = 1;
 
-  // Master Admin Row
   const trAdmin = document.createElement("tr");
   trAdmin.style.background = "#fef3c7";
   trAdmin.innerHTML = `
@@ -921,7 +950,6 @@ async function openPasswordVault() {
   `;
   tbody.appendChild(trAdmin);
 
-  // Hospitals Rows
   Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
     const hosp = multiHospitalMaster.hospitals[hId];
     const decPassword = hosp.encVaultToken ? decryptToken(hosp.encVaultToken, masterKey) : "********";
@@ -992,7 +1020,26 @@ function closePasswordVault() {
 }
 
 // ==============================================================
-// 5. CREATE HOSPITAL WITH PASSWORD ON HOME SCREEN
+// 5. SIGNATURES EDIT LOGIC
+// ==============================================================
+function updateSignaturesFromPanel() {
+  if (!isUnlocked) return;
+  const cur = getActiveHospitalData();
+  if (!cur.signatures) cur.signatures = { preparedBy: "", verifiedBy: "", incharge: "" };
+
+  cur.signatures.preparedBy = document.getElementById("inputPreparedBy").value.trim().toUpperCase();
+  cur.signatures.verifiedBy = document.getElementById("inputVerifiedBy").value.trim().toUpperCase();
+  cur.signatures.incharge = document.getElementById("inputIncharge").value.trim().toUpperCase();
+
+  document.getElementById("signPrepDisplay").innerHTML = `<b>${cur.signatures.preparedBy}</b>`;
+  document.getElementById("signVerDisplay").innerHTML = `<b>${cur.signatures.verifiedBy}</b>`;
+  document.getElementById("signInchDisplay").innerHTML = `<b>${cur.signatures.incharge}</b>`;
+
+  markUnsavedAndDebounce();
+}
+
+// ==============================================================
+// 6. CREATE STRICTLY BLANK HOSPITAL
 // ==============================================================
 async function promptAddNewHospital() {
   const newName = prompt("नये अस्पताल का नाम लिखें (Enter Hospital Name):");
@@ -1015,11 +1062,11 @@ async function promptAddNewHospital() {
 
   refreshHospitalUI();
   saveDatabase(false);
-  alert(`✅ नया अस्पताल "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
+  alert(`✅ नया खाली अस्पताल "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
 }
 
 // ==============================================================
-// 6. SYNC & STORAGE
+// 7. SYNC & STORAGE
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1129,6 +1176,17 @@ function onHospitalNameEdited() {
 function refreshHospitalUI() {
   const current = getActiveHospitalData();
   document.getElementById("hospitalNameDisplay").innerText = current.hospitalTitle;
+  
+  if (!current.signatures) current.signatures = { preparedBy: "", verifiedBy: "", incharge: "" };
+  
+  document.getElementById("inputPreparedBy").value = current.signatures.preparedBy || "";
+  document.getElementById("inputVerifiedBy").value = current.signatures.verifiedBy || "";
+  document.getElementById("inputIncharge").value = current.signatures.incharge || "";
+
+  document.getElementById("signPrepDisplay").innerHTML = `<b>${current.signatures.preparedBy || ""}</b>`;
+  document.getElementById("signVerDisplay").innerHTML = `<b>${current.signatures.verifiedBy || ""}</b>`;
+  document.getElementById("signInchDisplay").innerHTML = `<b>${current.signatures.incharge || ""}</b>`;
+
   populateHospitalDropdown();
   ensureMonthData(currentYear, currentMonth);
   renderRosterView();
