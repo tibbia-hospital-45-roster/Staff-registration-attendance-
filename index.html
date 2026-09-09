@@ -309,14 +309,23 @@
   .opd-banner { background: #166534; }
   .ipd-banner { background: #0b62a4; }
 
+  /* 🛠️ FIXED: Removed hand cursor, changed to text input cursor */
   .duty-cell-input {
-    width: 100%; height: 100%; border: none; outline: none; background: transparent;
-    text-align: center; font-weight: 700; font-size: 8px; cursor: pointer; text-transform: uppercase;
+    width: 100%; 
+    height: 100%; 
+    border: none; 
+    outline: none; 
+    background: transparent;
+    text-align: center; 
+    font-weight: 700; 
+    font-size: 8px; 
+    cursor: text; 
+    text-transform: uppercase;
   }
   .duty-cell-input:focus { background: #ffffff !important; box-shadow: inset 0 0 0 1.5px #0284c7; }
 
   .staff-name-col { text-align: left; padding-left: 6px !important; }
-  .staff-name-input { width: 100%; border: none; outline: none; background: transparent; font-weight: 700; font-size: 8.5px; }
+  .staff-name-input { width: 100%; border: none; outline: none; background: transparent; font-weight: 700; font-size: 8.5px; cursor: text; }
 
   .color-single-white { background-color: #ffffff !important; color: #1e293b !important; }
   .color-off { background-color: #fff2a8 !important; color: #854d0e !important; font-weight: 800; }
@@ -618,7 +627,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v14";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v15";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -678,9 +687,7 @@ function getActiveHospitalData() {
     multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "tibbia_karol_bagh";
   }
   const cur = multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
-  if (!cur.staffDirectory) {
-    cur.staffDirectory = { opd: [], ipd: [] };
-  }
+  if (!cur.staffDirectory) cur.staffDirectory = { opd: [], ipd: [] };
   if (!cur.staffDirectory.opd) cur.staffDirectory.opd = [];
   if (!cur.staffDirectory.ipd) cur.staffDirectory.ipd = [];
   return cur;
@@ -1514,4 +1521,5 @@ window.onload = () => {
 </script>
 </body>
 </html>
+
 
