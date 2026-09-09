@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -619,7 +618,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v13";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v14";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -678,7 +677,13 @@ function getActiveHospitalData() {
     const keys = Object.keys(multiHospitalMaster.hospitals);
     multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "tibbia_karol_bagh";
   }
-  return multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
+  const cur = multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
+  if (!cur.staffDirectory) {
+    cur.staffDirectory = { opd: [], ipd: [] };
+  }
+  if (!cur.staffDirectory.opd) cur.staffDirectory.opd = [];
+  if (!cur.staffDirectory.ipd) cur.staffDirectory.ipd = [];
+  return cur;
 }
 
 function getMonthKey(year, month) { return `${year}-${month}`; }
@@ -1509,3 +1514,4 @@ window.onload = () => {
 </script>
 </body>
 </html>
+
