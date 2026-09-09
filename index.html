@@ -1,14 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hospital Duty Roster Pro - Secure Multi-Hospital System</title>
-<!-- SheetJS for Offline Excel Export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- html2pdf.js for Direct 1-Click PDF Download -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<!-- Firebase App & Realtime Database SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
@@ -309,7 +307,6 @@
   .opd-banner { background: #166534; }
   .ipd-banner { background: #0b62a4; }
 
-  /* 🛠️ FIXED: Removed hand cursor, changed to text input cursor */
   .duty-cell-input {
     width: 100%; 
     height: 100%; 
@@ -364,7 +361,6 @@
 
 <div id="statusToast"></div>
 
-<!-- 👑 WELCOME OWNER ANIMATION MODAL -->
 <div id="ownerWelcomeModal">
   <div class="welcome-card">
     <div style="font-size: 50px; margin-bottom: 10px;">👑</div>
@@ -378,7 +374,6 @@
   </div>
 </div>
 
-<!-- SECURE PASSWORD INPUT MODAL -->
 <div id="securePasswordModal" class="modal-overlay">
   <div class="modal-box" style="max-width: 420px; text-align: left;">
     <div style="text-align: center; font-size: 28px; margin-bottom: 4px;" id="secModalIcon">🔐</div>
@@ -406,7 +401,6 @@
   </div>
 </div>
 
-<!-- MASTER VAULT MODAL -->
 <div id="pwVaultModal" class="modal-overlay">
   <div class="modal-box" style="max-width: 680px;">
     <div style="font-size: 30px; margin-bottom: 6px;">🛡️</div>
@@ -433,7 +427,6 @@
   </div>
 </div>
 
-<!-- CONTROL PANEL -->
 <div class="control-panel">
   <div class="panel-header">
     <div class="app-title">
@@ -461,7 +454,6 @@
     </div>
   </div>
 
-  <!-- HOSPITAL SELECTOR & CREATOR ON HOME SCREEN -->
   <div class="hospital-bar">
     <b>🏥 Active Hospital:</b>
     <select id="hospitalSelector" onchange="switchHospitalWithAuth(this.value)"></select>
@@ -503,7 +495,6 @@
     </div>
   </div>
 
-  <!-- ✍️ SIGNATURE CONTROLS (Only visible when unlocked) -->
   <div class="staff-controls admin-only-elem" style="margin-top: 10px; border-top: 1px dashed #cbd5e1;">
     <b>Signature Names:</b>
     <input type="text" id="inputPreparedBy" placeholder="Prepared By" style="width: 150px;" oninput="updateSignaturesFromPanel()">
@@ -512,7 +503,6 @@
   </div>
 </div>
 
-<!-- ROSTER LOCKED NOTICE -->
 <div id="rosterLockedNotice">
   <div style="font-size: 44px; margin-bottom: 8px;">🔒</div>
   <h2 style="color: #0b62a4; margin: 0 0 8px 0; font-size: 19px;">ड्यूटी रोस्टर पूरी तरह सुरक्षित व लॉक है</h2>
@@ -524,7 +514,6 @@
   </button>
 </div>
 
-<!-- ROSTER SHEET -->
 <div class="roster-sheet" id="printArea">
   <div class="header-card">
     <div>
@@ -627,7 +616,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v15";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v16";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -1350,12 +1339,15 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
 function onDutyInput(elem, dept, staffName, dayIdx) {
   if (!isUnlocked) return;
   const upperVal = elem.value.toUpperCase();
-  elem.value = upperVal;
+  
+  // Update local model directly without re-rendering the whole table so cursor/focus stays perfectly!
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
   if (!currentHospital.monthlyDuties[mKey][dept][staffName]) currentHospital.monthlyDuties[mKey][dept][staffName] = Array(31).fill("");
   currentHospital.monthlyDuties[mKey][dept][staffName][dayIdx] = upperVal;
+  
   elem.parentElement.className = parseDutyCode(upperVal).cls;
+  recomputeTotals();
   markUnsavedAndDebounce();
 }
 
@@ -1521,5 +1513,3 @@ window.onload = () => {
 </script>
 </body>
 </html>
-
-
