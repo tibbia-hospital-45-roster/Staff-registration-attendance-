@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -272,13 +273,13 @@
 
 <script>
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_DATABASE_NAME.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyCHl45xwbYgSXmioz495... (connected)",
+        authDomain: "tibia-hospital-roster.firebaseapp.com",
+        databaseURL: "https://tibia-hospital-roster-default-rtdb.firebaseio.com",
+        projectId: "tibia-hospital-roster",
+        storageBucket: "tibia-hospital-roster.appspot.com",
+        messagingSenderId: "302002602356",
+        appId: "1:302002602356:web:ee6329..."
     };
 
     let db = null;
@@ -309,7 +310,7 @@
         isLocked: true
     };
 
-    let appData = JSON.parse(localStorage.getItem('hospital_roster_cloud_v37')) || defaultData;
+    let appData = JSON.parse(localStorage.getItem('hospital_roster_cloud_v38')) || defaultData;
     let isRemoteUpdate = false;
     let saveTimeout = null;
 
@@ -321,11 +322,11 @@
         initLoginHospitalDropdown();
 
         if (db) {
-            db.ref('hospital_duty_roster_cloud_data').on('value', (snapshot) => {
+            db.ref('multi_hospital_rosters').on('value', (snapshot) => {
                 let serverData = snapshot.val();
                 if (serverData && !isRemoteUpdate) {
                     appData = serverData;
-                    localStorage.setItem('hospital_roster_cloud_v37', JSON.stringify(appData));
+                    localStorage.setItem('hospital_roster_cloud_v38', JSON.stringify(appData));
                     initLoginHospitalDropdown();
                     if(document.getElementById('mainAppContainer').style.display === 'block') {
                         initHospitalDropdown();
@@ -392,7 +393,7 @@
         appData.currentHospital = hName;
         appData.isLocked = false;
         appData.isAdmin = true;
-        appData.isMasterAdmin = false; // Strictly standard hospital admin, NOT master admin
+        appData.isMasterAdmin = false;
         saveDataToCloud(true);
         initLoginHospitalDropdown();
 
@@ -403,7 +404,7 @@
         renderAll();
         updateRoleBadge();
         updateLockStatusDisplay();
-        document.getElementById('adminVaultBtn').style.display = "none"; // Hide vault for new hospital creator
+        document.getElementById('adminVaultBtn').style.display = "none";
         alert(`Hospital "${hName}" created successfully and unlocked!`);
     }
 
@@ -424,7 +425,7 @@
             appData.currentHospital = selectedH;
             appData.isLocked = false;
         } else if (password === h.password) {
-            appData.isMasterAdmin = false; // Regular hospital user
+            appData.isMasterAdmin = false;
             appData.isAdmin = true;
             appData.currentHospital = selectedH;
             appData.isLocked = false;
@@ -590,12 +591,12 @@
             badge.textContent = `👑 Master Admin (${appData.currentHospital})`;
             badge.style.background = "#fee2e2";
             badge.style.color = "#991b1b";
-            if (vaultBtn) vaultBtn.style.display = "inline-flex"; // Strictly visible ONLY for Master Admin
+            if (vaultBtn) vaultBtn.style.display = "inline-flex";
         } else if (appData.isAdmin && !appData.isLocked) {
             badge.textContent = `👤 Hospital Admin (${appData.currentHospital})`;
             badge.style.background = "#dcfce7";
             badge.style.color = "#16a34a";
-            if (vaultBtn) vaultBtn.style.display = "none"; // Strictly hidden for regular hospital users
+            if (vaultBtn) vaultBtn.style.display = "none";
         } else {
             badge.textContent = "🔒 Locked (Read Only)";
             badge.style.background = "#fef3c7";
@@ -880,11 +881,11 @@
     }
 
     function saveDataToCloud(showNotice = true) {
-        localStorage.setItem('hospital_roster_cloud_v37', JSON.stringify(appData));
+        localStorage.setItem('hospital_roster_cloud_v38', JSON.stringify(appData));
         
         if (db) {
             isRemoteUpdate = true;
-            db.ref('hospital_duty_roster_cloud_data').set(appData)
+            db.ref('multi_hospital_rosters').set(appData)
               .then(() => {
                   isRemoteUpdate = false;
                   if (showNotice) {
