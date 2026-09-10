@@ -1,1515 +1,1020 @@
-
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hospital Duty Roster Pro - Secure Multi-Hospital System</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Duty Roster Pro - Master Admin Control System</title>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF & AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Firebase SDK Compat Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    
+    <style>
+        :root {
+            --primary: #0f766e;
+            --secondary: #0284c7;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --sky: #0ea5e9;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 8px; font-size: 13px; }
+        .container { max-width: 1400px; margin: 0 auto; background: var(--card-bg); padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none; }
+        
+        /* Secure Login Gate Overlay */
+        #authOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
+        .auth-card h3 { color: var(--primary); margin-bottom: 15px; font-size: 18px; }
+        .auth-card select, .auth-card input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .password-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
+        .password-wrapper input { width: 100%; margin-bottom: 0; padding-right: 50px; }
+        .password-wrapper span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 11px; font-weight: bold; color: var(--primary); background: #e2e8f0; padding: 3px 6px; border-radius: 4px; user-select: none; }
+        .auth-card button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
+        .auth-card button:active { opacity: 0.8; }
+        .auth-card .btn-create { background: #16a34a; }
 
-<style>
-  * { 
-    box-sizing: border-box; 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-  body { 
-    margin: 0; 
-    padding: 12px; 
-    background-color: #0c1e33; 
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(14, 116, 144, 0.28) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(11, 98, 164, 0.32) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(2, 132, 199, 0.12) 0px, transparent 65%),
-      url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2338bdf8' fill-opacity='0.045' fill-rule='evenodd'%3E%3Cpath d='M50 20h20v20h20v20H70v20H50V60H30V40h20V20zm0 8h12v12h12v12H62v12H50V52H38V40h12V28z'/%3E%3Cpath d='M10 95h14l4-8 6 16 6-12 4 4h16' stroke='%2338bdf8' stroke-width='1.2' stroke-opacity='0.06' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E");
-    background-attachment: fixed;
-    background-size: auto, auto, auto, 120px 120px;
-    color: #1e293b; 
-    min-height: 100vh;
-  }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
+        .header h2 { font-size: 16px; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+        .sync-badge { font-size: 11px; background: #dcfce7; color: var(--success); padding: 3px 8px; border-radius: 12px; font-weight: 600; }
+        .role-badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
 
-  .sync-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    background: #e2e8f0;
-    color: #334155;
-  }
-  .sync-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #10b981;
-    display: inline-block;
-    box-shadow: 0 0 6px #10b981;
-  }
-  .sync-dot.offline { background: #ef4444; box-shadow: none; }
+        .top-action-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 6px; border-radius: 6px; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; }
+        .btn:active { opacity: 0.8; }
+        .btn-red { background: #dc2626; }
+        .btn-blue { background: #0284c7; }
+        .btn-green { background: #16a34a; }
+        .btn-orange { background: #d97706; }
+        .btn-purple { background: #7c3aed; }
+        .btn-slate { background: #64748b; }
 
-  .admin-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 20px;
-    margin-left: 6px;
-    cursor: pointer;
-  }
-  .admin-locked { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
-  .admin-unlocked { background: #dcfce7; color: #166534; border: 1px solid #4ade80; }
-  .admin-super { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+        .control-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 10px; }
+        .control-group { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
+        select, input { padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; background: white; }
 
-  #statusToast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: #0f172a;
-    color: #ffffff;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 13.5px;
-    font-weight: 700;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    display: none;
-    z-index: 99999;
-    transition: opacity 0.3s ease;
-    border-left: 4px solid #10b981;
-  }
+        .report-header { text-align: center; background: #0f766e; color: white; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; font-size: 14px; text-transform: uppercase; }
+        .dept-title { background: #1e3a8a; color: white; padding: 6px 10px; font-weight: bold; font-size: 12px; margin-top: 10px; border-radius: 4px 4px 0 0; }
+        
+        .table-container { overflow-x: auto; margin-bottom: 10px; max-height: 450px; border: 1px solid #cbd5e1; }
+        table { width: 100%; border-collapse: collapse; font-size: 10.5px; background: white; }
+        th, td { border: 1px solid #cbd5e1; padding: 3px; text-align: center; white-space: nowrap; }
+        th { background: #334155; color: white; position: sticky; top: 0; z-index: 2; font-size: 10px; }
+        
+        /* Shift Color Rules */
+        .shift-gh { background-color: #d1fae5 !important; color: #065f46; font-weight: bold; }
+        .shift-off { background-color: #fef08a !important; color: #713f12; font-weight: bold; }
+        .shift-double { background-color: #bae6fd !important; color: #0369a1; font-weight: bold; }
+        
+        .shift-input { width: 30px; text-align: center; border: none; background: transparent; font-weight: bold; font-size: 10px; outline: none; }
+        
+        /* Official Notice Board Section */
+        .notice-board { margin-top: 12px; background: #fffbeb; border: 1px solid #f59e0b; padding: 10px; border-radius: 6px; }
+        .notice-board h4 { color: #b45309; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .notice-board ul { padding-left: 16px; font-size: 10.5px; color: #78350f; line-height: 1.4; }
 
-  /* 👑 WELCOME OWNER ANIMATION MODAL */
-  #ownerWelcomeModal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(12, 30, 51, 0.92);
-    backdrop-filter: blur(8px);
-    z-index: 9999999;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    animation: fadeInModal 0.4s ease;
-  }
-  .welcome-card {
-    background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
-    border: 3px solid #f59e0b;
-    border-radius: 20px;
-    padding: 35px 50px;
-    text-align: center;
-    box-shadow: 0 20px 50px rgba(245, 158, 11, 0.4);
-    animation: scaleUpBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    max-width: 480px;
-    width: 90%;
-  }
-  @keyframes scaleUpBounce {
-    0% { transform: scale(0.3); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes fadeInModal {
-    from { opacity: 0; } to { opacity: 1; }
-  }
+        .signature-section { display: flex; justify-content: space-between; margin-top: 12px; padding: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; }
+        .sig-box { text-align: center; font-size: 10.5px; font-weight: bold; width: 30%; border-top: 1px dashed #64748b; padding-top: 4px; }
 
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(2px);
-    z-index: 999999;
-    justify-content: center;
-    align-items: center;
-  }
-  .modal-box {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 24px 28px;
-    max-width: 520px;
-    width: 92%;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-    text-align: center;
-    border: 2px solid #0b62a4;
-  }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 650px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .modal-header { font-weight: bold; font-size: 16px; margin-bottom: 10px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { cursor: pointer; color: #dc2626; font-size: 18px; }
 
-  .control-panel {
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 14px 18px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #cbd5e1;
-  }
-  .panel-header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .app-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0b62a4;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .hospital-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    background: #e0f2fe;
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-bottom: 12px;
-    border: 1px solid #bae6fd;
-  }
-  .hospital-bar select {
-    font-weight: 700;
-    padding: 6px 10px;
-    border-radius: 5px;
-    border: 1.5px solid #0284c7;
-    background: #ffffff;
-    color: #0369a1;
-    max-width: 320px;
-  }
-  .action-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  button {
-    padding: 8px 13px;
-    font-size: 12px;
-    font-weight: 700;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-print { background: #0284c7; color: #fff; }
-  .btn-pdf { background: #e11d48; color: #fff; }
-  .btn-whatsapp { background: #25d366; color: #fff; }
-  .btn-excel { background: #16a34a; color: #fff; }
-  .btn-save { background: #0b62a4; color: #fff; }
-  .btn-exit { background: #475569; color: #fff; }
-  .btn-backup { background: #6366f1; color: #fff; }
-  .btn-reset { background: #94a3b8; color: #fff; }
-  .btn-add { background: #0d9488; color: #fff; padding: 6px 12px; }
-  .btn-del-action { background: #dc2626; color: #fff; padding: 6px 12px; }
-  .btn-admin { background: #ea580c; color: #fff; }
-  .btn-admin-locked { background: #047857; color: #fff; }
-  .btn-super-admin { background: #d97706; color: #fff; font-weight: 800; border: 1.5px solid #b45309; }
-
-  .staff-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    padding-top: 10px;
-    border-top: 1px dashed #cbd5e1;
-    font-size: 13px;
-  }
-  .staff-controls input, .staff-controls select {
-    padding: 6px 10px;
-    border: 1px solid #94a3b8;
-    border-radius: 5px;
-    font-size: 12px;
-  }
-  .control-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .admin-only-elem { display: none !important; }
-  body.unlocked-mode .admin-only-elem { display: inline-flex !important; }
-  .super-admin-only { display: none !important; }
-  body.super-admin-mode .super-admin-only { display: inline-flex !important; }
-
-  #rosterLockedNotice {
-    background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(12px);
-    border: 2px solid rgba(14, 165, 233, 0.4);
-    border-radius: 14px;
-    padding: 55px 24px;
-    text-align: center;
-    margin: 20px auto;
-    max-width: 680px;
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
-  }
-
-  .roster-sheet {
-    display: none;
-    background: #ffffff;
-    padding: 8px 10px;
-    border: 1px solid #94a3b8;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    width: 100%;
-    margin: 0 auto;
-    overflow-x: auto;
-  }
-
-  .header-card {
-    border: 2px solid #0b62a4;
-    padding: 8px 12px;
-    background: #eef6fc;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-  .editable-hospital-name {
-    font-size: 15px;
-    font-weight: 800;
-    color: #0b62a4;
-    outline: none;
-    border: 1px dashed transparent;
-    padding: 2px 4px;
-    border-radius: 4px;
-    text-transform: uppercase;
-  }
-  .sub-header-title { font-size: 11px; font-weight: 700; color: #334155; margin-top: 3px; }
-  .header-info-right { text-align: right; font-size: 10px; font-weight: 700; color: #1e293b; line-height: 1.4; }
-
-  table.roster-grid {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: center;
-    font-size: 8px;
-    margin-bottom: 4px;
-    table-layout: fixed;
-  }
-  table.roster-grid th, table.roster-grid td {
-    border: 1px solid #7ea8c9;
-    padding: 0;
-    height: 20px;
-    vertical-align: middle;
-  }
-  table.roster-grid th { background: #d8e8f5; color: #0b62a4; font-weight: 700; }
-  th.sun-header { background: #d92525 !important; color: #ffffff !important; }
-
-  .dept-banner { color: #ffffff; font-weight: 800; font-size: 10px; text-align: left; padding: 4px 8px !important; }
-  .opd-banner { background: #166534; }
-  .ipd-banner { background: #0b62a4; }
-
-  .duty-cell-input {
-    width: 100%; 
-    height: 100%; 
-    border: none; 
-    outline: none; 
-    background: transparent;
-    text-align: center; 
-    font-weight: 700; 
-    font-size: 8px; 
-    cursor: text; 
-    text-transform: uppercase;
-  }
-  .duty-cell-input:focus { background: #ffffff !important; box-shadow: inset 0 0 0 1.5px #0284c7; }
-
-  .staff-name-col { text-align: left; padding-left: 6px !important; }
-  .staff-name-input { width: 100%; border: none; outline: none; background: transparent; font-weight: 700; font-size: 8.5px; cursor: text; }
-
-  .color-single-white { background-color: #ffffff !important; color: #1e293b !important; }
-  .color-off { background-color: #fff2a8 !important; color: #854d0e !important; font-weight: 800; }
-  .color-double { background-color: #bbf2f6 !important; color: #0e7490 !important; font-weight: 800; }
-  .color-gh { background-color: #c3e6cb !important; color: #166534 !important; font-weight: 800; }
-
-  .tot-duty-cell { background: #dcfce7; font-weight: 800; color: #166534; }
-  .tot-off-cell { background: #fef9c3; font-weight: 800; color: #854d0e; }
-  .tot-days-cell { background: #f1f5f9; font-weight: 700; }
-
-  .footer-legend-box {
-    margin-top: 5px; border: 1px solid #7ea8c9; padding: 5px 10px;
-    display: flex; justify-content: space-between; background: #f8fafc; font-size: 8.5px;
-  }
-  .timing-pill { display: inline-block; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin: 1px 2px; border: 1px solid #cbd5e1; }
-  .legend-tag { display: inline-block; padding: 2px 6px; margin-right: 4px; border-radius: 3px; font-weight: 700; }
-  .auth-signatures { display: flex; justify-content: space-around; width: 38%; text-align: center; font-weight: 700; }
-
-  .note-container { margin-top: 4px; border: 1.5px solid #d92525; padding: 4px 8px; background: #fff8f8; font-size: 8px; line-height: 1.3; }
-  .note-container b { color: #b91c1c; }
-
-  .pw-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; text-align: left; }
-  .pw-table th, .pw-table td { padding: 8px 10px; border: 1px solid #cbd5e1; }
-  .pw-table th { background: #f1f5f9; color: #0b62a4; font-weight: 800; }
-  .pw-code { font-family: monospace; font-weight: 800; color: #b91c1c; background: #fee2e2; padding: 2px 6px; border-radius: 4px; }
-
-  @media print {
-    .control-panel, #statusToast, .modal-overlay, .hospital-bar, #rosterLockedNotice { display: none !important; }
-    body { padding: 0; background: #ffffff; }
-    .roster-sheet { border: none; box-shadow: none; padding: 0; width: 100%; display: block !important; }
-    @page { size: A4 landscape; margin: 4mm; }
-  }
-</style>
+        @media print {
+            @page { size: A4 landscape; margin: 8mm; }
+            body { background: white; padding: 0; font-size: 9.5px; }
+            .top-action-bar, .control-panel, .header { display: none !important; }
+            .container { box-shadow: none; padding: 4px; max-width: 100%; width: 100%; border: 2px solid #000; }
+            .table-container { max-height: none; overflow: visible; border: 1px solid #000; margin-bottom: 6px; }
+            table { border: 1px solid #000; font-size: 9px; width: 100%; }
+            th, td { border: 1px solid #000 !important; padding: 2px !important; }
+            th { font-size: 8.5px; background: #334155 !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .shift-input { font-size: 9px; width: 25px; }
+            .report-header { font-size: 12px; padding: 5px; background: #0f766e !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .dept-title { font-size: 10px; padding: 4px; background: #1e3a8a !important; color: white !important; -webkit-print-color-adjust: exact; margin-top: 6px; }
+            .notice-board { border: 1.5px solid #000 !important; background: #fff !important; color: #000 !important; padding: 6px; margin-top: 8px; display: block !important; }
+            .notice-board h4, .notice-board ul { color: #000 !important; font-size: 9.5px; }
+            .signature-section { border: 1px solid #000; background: #fff !important; padding: 6px; margin-top: 8px; display: flex !important; }
+        }
+    </style>
 </head>
 <body>
 
-<div id="statusToast"></div>
+<!-- SECURE LOGIN GATE OVERLAY -->
+<div id="authOverlay">
+    <div class="auth-card">
+        <h3>🔒 Hospital Roster Login</h3>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Select your hospital and enter password:</p>
+        <select id="loginHospitalSelect" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #cbd5e1; border-radius:6px;"></select>
+        
+        <div class="password-wrapper">
+            <input type="password" id="loginPasswordInput" placeholder="Enter Hospital Password / Master Admin Key">
+            <span onclick="toggleLoginPasswordVisibility()" id="loginEyeBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 11px; font-weight: bold; color: #0f766e; background: #e2e8f0; padding: 3px 6px; border-radius: 4px;">Show</span>
+        </div>
 
-<div id="ownerWelcomeModal">
-  <div class="welcome-card">
-    <div style="font-size: 50px; margin-bottom: 10px;">👑</div>
-    <h2 style="margin: 0; color: #b45309; font-size: 24px;">Welcome, Owner!</h2>
-    <p style="font-size: 14px; color: #78350f; margin: 10px 0 20px 0; font-weight: 700;">
-      मास्टर एडमिन एक्सेस सफलतापूर्वक स्वीकृत हुआ।
-    </p>
-    <button onclick="closeOwnerWelcome()" style="background: #d97706; color: #fff; padding: 10px 24px; font-size: 14px; font-weight: 800; border-radius: 8px; border: none; cursor: pointer;">
-      रोस्टर में प्रवेश करें (Enter)
-    </button>
-  </div>
+        <button onclick="authenticateAndUnlock()">Unlock Roster</button>
+        <button class="btn-create" onclick="loginScreenCreateHospital()">+ Create New Hospital</button>
+    </div>
 </div>
 
-<div id="securePasswordModal" class="modal-overlay">
-  <div class="modal-box" style="max-width: 420px; text-align: left;">
-    <div style="text-align: center; font-size: 28px; margin-bottom: 4px;" id="secModalIcon">🔐</div>
-    <h3 style="margin: 0 0 6px 0; color: #0b62a4; font-size: 16px; text-align: center;" id="secModalTitle">सुरक्षा प्रमाणीकरण</h3>
-    <p style="font-size: 12.5px; color: #475569; margin: 4px 0 14px 0; text-align: center;" id="secModalMsg">पासवर्ड दर्ज करें:</p>
-    
-    <div style="position: relative; margin-bottom: 8px;">
-      <input type="password" id="secModalInput" placeholder="Enter Password" 
-        style="width: 100%; padding: 10px 42px 10px 12px; border: 1.5px solid #0284c7; border-radius: 6px; font-size: 14px; outline: none; font-weight: 700;">
-      <button type="button" id="secModalEyeBtn" onclick="togglePasswordVisibility()" 
-        style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; font-size: 16px; cursor: pointer; padding: 4px 6px; color: #64748b;" title="Show/Hide">
-        👁️
-      </button>
+<div class="container" id="mainAppContainer">
+    <div class="header">
+        <h2>🏥 Hospital Duty Roster Pro - Cloud Sync System</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="firebaseStatus" class="sync-badge">● Cloud Syncing...</span>
+            <span id="activeRoleDisplay" class="role-badge">👤 Standard User</span>
+        </div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 12px; color: #64748b;">
-      <input type="checkbox" id="secModalCheckbox" onchange="togglePasswordVisibilityFromCheck(this)">
-      <label for="secModalCheckbox" style="cursor: pointer;">पासवर्ड दिखाएं (Show Password)</label>
+    <!-- Top Action Bar -->
+    <div class="top-action-bar">
+        <button class="btn btn-red" onclick="downloadPDF()">📄 Download PDF</button>
+        <button class="btn btn-blue" onclick="printSheet()">🖨️ Print Sheet</button>
+        <button class="btn btn-green" onclick="shareWhatsApp()">💬 WhatsApp Share</button>
+        <button class="btn btn-green" onclick="exportExcel()">📊 Export Excel (.xlsx)</button>
+        <button class="btn btn-green" onclick="toggleLock()"><span id="lockStatusText">🔒 Lock Roster</span></button>
+        <button id="adminVaultBtn" class="btn btn-orange" style="display: none;" onclick="openAdminVaultModal()">🛡️ Admin Control Panel</button>
+        <button class="btn btn-blue" onclick="manualSaveData()">💾 Save Data</button>
+        <button class="btn btn-purple" onclick="backupJSON()">💾 Backup (.json)</button>
+        <button class="btn btn-slate" onclick="resetHospital()">🔄 Reset Hospital</button>
     </div>
 
-    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-      <button class="btn-reset" type="button" onclick="cancelSecurePasswordModal()" style="padding: 8px 14px;">रद्द करें</button>
-      <button class="btn-save" type="button" onclick="submitSecurePasswordModal()" style="padding: 8px 16px; background: #0b62a4;">प्रमाणित करें</button>
+    <!-- Control Toolbar Panel -->
+    <div class="control-panel">
+        <div class="control-group">
+            <span>Active Hospital:</span>
+            <select id="hospitalSelect" onchange="switchHospital()" style="min-width: 220px;"></select>
+            <button class="btn btn-green" style="padding: 4px 8px;" onclick="createNewHospitalPrompt()">+ Create New</button>
+            <button class="btn btn-red" style="padding: 4px 8px;" onclick="deleteCurrentHospital()">🗑️ Delete Roster</button>
+        </div>
+
+        <div class="control-group" style="margin-left: auto;">
+            <span>Month:</span>
+            <select id="monthSelect" onchange="renderAll()">
+                <option value="January">January</option><option value="February">February</option>
+                <option value="March">March</option><option value="April">April</option>
+                <option value="May">May</option><option value="June">June</option>
+                <option value="July">July</option><option value="August">August</option>
+                <option value="September" selected>September</option><option value="October">October</option>
+                <option value="November">November</option><option value="December">December</option>
+            </select>
+            <span>Year:</span>
+            <select id="yearSelect" onchange="renderAll()">
+                <option value="2026" selected>2026</option><option value="2027">2027</option>
+                <option value="2028">2028</option><option value="2029">2029</option>
+                <option value="2030">2030</option><option value="2031">2031</option>
+                <option value="2032">2032</option><option value="2033">2033</option>
+                <option value="2034">2034</option><option value="2035">2035</option>
+            </select>
+        </div>
     </div>
-  </div>
+
+    <!-- Staff Addition & Deletion Controls -->
+    <div class="control-panel">
+        <div class="control-group">
+            <span>Add Staff:</span>
+            <select id="targetDeptAdd">
+                <option value="OPD">OPD Registration</option>
+                <option value="IPD">IPD Registration</option>
+            </select>
+            <input type="text" id="staffNameInput" placeholder="Employee Name">
+            <button class="btn btn-green" style="padding: 4px 10px;" onclick="addStaff()">+ Add Name</button>
+        </div>
+
+        <div class="control-group" style="margin-left: auto;">
+            <span>Delete Staff:</span>
+            <select id="targetDeptDel">
+                <option value="OPD">OPD Registration</option>
+                <option value="IPD">IPD Registration</option>
+            </select>
+            <select id="staffDeleteSelect" style="min-width: 140px;"></select>
+            <button class="btn btn-red" style="padding: 4px 10px;" onclick="deleteSelectedStaff()">🗑️ Delete Name</button>
+        </div>
+    </div>
+
+    <!-- Official Hospital Banner -->
+    <div id="reportHospitalTitle" class="report-header">
+        TIBBIA COLLAGE AND HOSPITAL KAROL BAGH NEW DELHI 110005
+    </div>
+
+    <!-- Department 1: OPD Registration -->
+    <div class="dept-title">1. OPD REGISTRATION DEPARTMENT</div>
+    <div class="table-container">
+        <table id="opdTable">
+            <thead id="opdHead"></thead>
+            <tbody id="opdBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Department 2: IPD Registration -->
+    <div class="dept-title">2. IPD REGISTRATION DEPARTMENT</div>
+    <div class="table-container">
+        <table id="ipdTable">
+            <thead id="ipdHead"></thead>
+            <tbody id="ipdBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Official Notice Board Section -->
+    <div class="notice-board" id="noticeBoardSection">
+        <h4>📢 IMPORTANT NOTICE & GUIDELINES (महत्वपूर्ण निर्देश)</h4>
+        <ul>
+            <li><strong>Duty Time & Punctuality:</strong> सभी कर्मचारियों को अपनी ड्यूटी के समय पर अस्पताल में उपस्थित होना अनिवार्य है। समय पर आना और जाना सुनिश्चित करें।</li>
+            <li><strong>IPD Duty Timings (शिफ्ट का समय):</strong>
+                <br>• Morning Shift: सुबह 06:00 AM से दोपहर 02:00 PM तक
+                <br>• Evening Shift: दोपहर 02:00 PM से रात्रि 10:00 PM तक
+                <br>• Night Shift: रात्रि 10:00 PM से सुबह 06:00 AM तक
+            </li>
+            <li><strong>General Instructions:</strong> ड्यूटी के दौरान लापरवाही बरतने पर नियमानुसार कार्रवाई की जाएगी। बिना पूर्व सूचना के अनुपस्थित रहना दंडनीय है।</li>
+        </ul>
+    </div>
+
+    <!-- Signatures -->
+    <div class="signature-section">
+        <div class="sig-box">Prepared By</div>
+        <div class="sig-box">Verified By</div>
+        <div class="sig-box">Incharge</div>
+    </div>
 </div>
 
-<div id="pwVaultModal" class="modal-overlay">
-  <div class="modal-box" style="max-width: 680px;">
-    <div style="font-size: 30px; margin-bottom: 6px;">🛡️</div>
-    <h3 style="margin: 0; color: #b45309; font-size: 17px;">Admin Master Privacy Vault</h3>
-    <p style="font-size: 12px; color: #64748b; margin: 6px 0 14px 0;">
-      यहाँ से आप सभी अस्पतालों के पासवर्ड देख और बदल सकते हैं।
-    </p>
-    <div style="max-height: 320px; overflow-y: auto;">
-      <table class="pw-table">
-        <thead>
-          <tr>
-            <th style="width: 35px;">#</th>
-            <th>Hospital Name</th>
-            <th>Admin Password</th>
-            <th style="width: 110px; text-align: center;">Action</th>
-          </tr>
-        </thead>
-        <tbody id="pwVaultTableBody"></tbody>
-      </table>
+<!-- Admin Control Panel Modal -->
+<div id="adminVaultModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>🛡️ Master Admin Control Panel</span>
+            <span class="close-btn" onclick="closeAdminVaultModal()">&times;</span>
+        </div>
+        <div style="background:#fef3c7; padding:8px; border-radius:4px; margin-bottom:10px; font-size:12px; color:#92400e;">
+            <strong>Master Admin Password Control:</strong> <button class="btn btn-purple" style="display:inline-block; padding:2px 6px; font-size:10px; margin-left:6px;" onclick="changeAdminMasterPasswordPrompt()">Change Master Password</button>
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 10px;">View and manage all hospital passwords or delete rosters:</p>
+        <div class="table-container" style="max-height: 250px;">
+            <table style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Hospital Name</th>
+                        <th>Security Password</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vaultTableBody"></tbody>
+            </table>
+        </div>
     </div>
-    <div style="margin-top: 18px;">
-      <button class="btn-reset" onclick="closePasswordVault()">बंद करें (Close Vault)</button>
-    </div>
-  </div>
-</div>
-
-<div class="control-panel">
-  <div class="panel-header">
-    <div class="app-title">
-      <span>🏥</span> Hospital Duty Roster Pro
-      <span class="sync-indicator">
-        <span class="sync-dot" id="syncStatusDot"></span>
-        <span id="syncStatusText">Connecting Cloud...</span>
-      </span>
-      <span class="admin-badge admin-locked" id="adminBadge" onclick="triggerLoginOrUnlock()">
-        🔒 Roster Locked (क्लिक करके पासवर्ड डालें)
-      </span>
-    </div>
-    <div class="action-buttons">
-      <button class="btn-pdf" onclick="safeExecute(downloadPdfDirect)">📄 Download PDF</button>
-      <button class="btn-print" onclick="window.print()">🖨️ Print Sheet</button>
-      <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
-      <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
-      
-      <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
-      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️ Admin Master Vault</button>
-
-      <button class="btn-save admin-only-elem" onclick="safeExecute(manualSave)">💾 Save Data</button>
-      <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
-      <button class="btn-reset admin-only-elem" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
-    </div>
-  </div>
-
-  <div class="hospital-bar">
-    <b>🏥 Active Hospital:</b>
-    <select id="hospitalSelector" onchange="switchHospitalWithAuth(this.value)"></select>
-    <button class="btn-add" onclick="promptAddNewHospital()" style="background: #0d9488; color: #fff;">➕ Create New Hospital Roster</button>
-    <button class="btn-del-action admin-only-elem" onclick="deleteCurrentHospital()" style="padding: 5px 10px; font-size: 11px;">🗑️ Delete Roster</button>
-  </div>
-
-  <div class="staff-controls">
-    <div class="control-group">
-      <b>Month:</b>
-      <select id="monthSelect" onchange="safeExecute(onDateConfigChange)">
-        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-      </select>
-      <b>Year:</b>
-      <select id="yearSelect" onchange="safeExecute(onDateConfigChange)"></select>
-    </div>
-
-    <div class="control-group admin-only-elem" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
-      <b>Add Staff:</b>
-      <select id="targetDept">
-        <option value="OPD">OPD Registration</option>
-        <option value="IPD">IPD Registration</option>
-      </select>
-      <input type="text" id="inputStaffName" placeholder="Employee Name" style="width: 140px;">
-      <button class="btn-add" onclick="safeExecute(addEmployee)">➕ Add Name</button>
-    </div>
-
-    <div class="control-group admin-only-elem" style="margin-left: 10px; padding-left: 12px; border-left: 1px solid #cbd5e1;">
-      <b>Delete:</b>
-      <select id="deleteDept" onchange="safeExecute(populateDeleteDropdown)">
-        <option value="OPD">OPD Registration</option>
-        <option value="IPD">IPD Registration</option>
-      </select>
-      <select id="deleteStaffSelect" style="width: 140px;"></select>
-      <button class="btn-del-action" onclick="safeExecute(deleteSelectedEmployee)">🗑️ Delete Name</button>
-    </div>
-  </div>
-
-  <div class="staff-controls admin-only-elem" style="margin-top: 10px; border-top: 1px dashed #cbd5e1;">
-    <b>Signature Names:</b>
-    <input type="text" id="inputPreparedBy" placeholder="Prepared By" style="width: 150px;" oninput="updateSignaturesFromPanel()">
-    <input type="text" id="inputVerifiedBy" placeholder="Verified By" style="width: 150px;" oninput="updateSignaturesFromPanel()">
-    <input type="text" id="inputIncharge" placeholder="Incharge" style="width: 150px;" oninput="updateSignaturesFromPanel()">
-  </div>
-</div>
-
-<div id="rosterLockedNotice">
-  <div style="font-size: 44px; margin-bottom: 8px;">🔒</div>
-  <h2 style="color: #0b62a4; margin: 0 0 8px 0; font-size: 19px;">ड्यूटी रोस्टर पूरी तरह सुरक्षित व लॉक है</h2>
-  <p style="color: #64748b; font-size: 13.5px; margin: 0 auto 20px auto; max-width: 500px; line-height: 1.5;">
-    इस अस्पताल की ड्यूटी देखने और भरने के लिए पासवर्ड दर्ज करें।
-  </p>
-  <button class="btn-admin" style="padding: 10px 22px; font-size: 14px;" onclick="triggerLoginOrUnlock()">
-    🔐 पासवर्ड दर्ज करके रोस्टर खोलें
-  </button>
-</div>
-
-<div class="roster-sheet" id="printArea">
-  <div class="header-card">
-    <div>
-      <div class="editable-hospital-name" id="hospitalNameDisplay" contenteditable="false" oninput="onHospitalNameEdited()" title="Hospital Name">
-        AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005
-      </div>
-      <div class="sub-header-title">MONTHLY DUTY ROSTER - OPD &amp; IPD REGISTRATION DEPARTMENTS</div>
-    </div>
-    <div class="header-info-right">
-      <span id="monthYearBadge" style="color:#0b62a4; font-size:11px;">MONTH: SEPTEMBER 2026</span><br>
-      Total Days: <span id="daysCountBadge">30</span> &nbsp;|&nbsp; Coverage: 24x7 (3 Shifts)
-    </div>
-  </div>
-
-  <table class="roster-grid" id="mainTable">
-    <colgroup id="tableColGroup"></colgroup>
-    <tbody id="tableBody"></tbody>
-  </table>
-
-  <div class="footer-legend-box">
-    <div style="line-height: 1.7; max-width: 60%;">
-      <b>SHIFT TIMINGS:</b><br>
-      <b>IPD Timings:</b> 
-      <span class="timing-pill">Morning: 06:00 AM - 02:00 PM</span>
-      <span class="timing-pill">Evening: 02:00 PM - 10:00 PM</span>
-      <span class="timing-pill">Night: 10:00 PM - 06:00 AM</span><br>
-      <b>COLOR CODE:</b>
-      <span class="legend-tag color-single-white">Single = White</span>
-      <span class="legend-tag color-off">OFF = Yellow</span>
-      <span class="legend-tag color-double">Double = Sky Blue</span>
-      <span class="legend-tag color-gh">GH = Green</span>
-    </div>
-
-    <div class="auth-signatures">
-      <div><br>___________________<br><span id="signPrepDisplay"><b></b></span><br>Prepared By</div>
-      <div><br>___________________<br><span id="signVerDisplay"><b></b></span><br>Verified By</div>
-      <div><br>___________________<br><span id="signInchDisplay"><b></b></span><br>Incharge</div>
-    </div>
-  </div>
-
-  <div class="note-container">
-    <b>महत्वपूर्ण निर्देश / IMPORTANT NOTE:</b><br>
-    सभी कर्मचारी अपनी निर्धारित शिफ्ट के अनुसार समय पर उपस्थित होना सुनिश्चित करें। ड्यूटी में बिना पूर्व सूचना के कोई भी फेरबदल प्रतिबंधित है।
-  </div>
 </div>
 
 <script>
-// ==============================================================
-// 1. SECURE HASH & ANTI-DEBUGGER PROTECTION
-// ==============================================================
-const SECRET_PEPPER = "Rinku_SuperAdmin_Salt_#992026!X";
-
-async function computeSaltedHash(text) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text + SECRET_PEPPER);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function encryptToken(plainText, key) {
-  let hex = "";
-  for (let i = 0; i < plainText.length; i++) {
-    const code = plainText.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-    hex += code.toString(16).padStart(2, '0');
-  }
-  return hex;
-}
-
-function decryptToken(hexStr, key) {
-  try {
-    let res = "";
-    for (let i = 0; i < hexStr.length; i += 2) {
-      const code = parseInt(hexStr.substr(i, 2), 16) ^ key.charCodeAt((i / 2) % key.length);
-      res += String.fromCharCode(code);
-    }
-    return res;
-  } catch (e) {
-    return "********";
-  }
-}
-
-// Anti-Inspect F12
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.onkeydown = function(e) {
-  if (e.keyCode === 123) return false;
-  if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) return false;
-  if (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) return false;
-};
-
-// ==============================================================
-// 2. FIREBASE & MULTI-HOSPITAL SYSTEM
-// ==============================================================
-const FIREBASE_DB_URL = "https://tibbia-hospital-roster-default-rtdb.firebaseio.com/";
-
-let firebaseDb = null;
-try {
-  firebase.initializeApp({ databaseURL: FIREBASE_DB_URL });
-  firebaseDb = firebase.database();
-} catch (e) {
-  console.warn("Firebase Init fallback:", e);
-}
-
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v16";
-
-const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-
-const now = new Date();
-let currentYear = now.getFullYear();
-let currentMonth = now.getMonth();
-let hasUnsavedChanges = false;
-
-let isUnlocked = false;
-let isSuperAdmin = false;
-let sessionSuperAdminKey = "Rinku_OPD_8383";
-
-function createBlankHospitalRoster(title, customHash, encVault) {
-  return {
-    hospitalTitle: title || "NEW HOSPITAL / CENTER",
-    adminHash: customHash,
-    encVaultToken: encVault,
-    signatures: {
-      preparedBy: "",
-      verifiedBy: "",
-      incharge: ""
-    },
-    staffDirectory: {
-      opd: [],
-      ipd: []
-    },
-    monthlyDuties: {}
-  };
-}
-
-let multiHospitalMaster = {
-  activeHospitalId: "tibbia_karol_bagh",
-  masterPasswordToken: encryptToken("Rinku_OPD_8383", "Rinku_SuperAdmin_Key_2026"),
-  hospitals: {
-    "tibbia_karol_bagh": {
-      hospitalTitle: "AYURVEDIC & UNANI TIBBIA COLLEGE & HOSPITAL, KAROL BAGH, NEW DELHI - 110005",
-      adminHash: "ea7357ffa1ca26bbd351aeefd3e79cbc7c48b7cc223c35ed50ab28fe4984e3e9",
-      encVaultToken: encryptToken("OPD@IPD45", "Rinku_OPD_8383"),
-      signatures: {
-        preparedBy: "RINKU",
-        verifiedBy: "SUSHIL",
-        incharge: "CHANDRA BHAN SIR"
-      },
-      staffDirectory: {
-        opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
-        ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
-      },
-      monthlyDuties: {}
-    }
-  }
-};
-
-function getActiveHospitalData() {
-  if (!multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId]) {
-    const keys = Object.keys(multiHospitalMaster.hospitals);
-    multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "tibbia_karol_bagh";
-  }
-  const cur = multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
-  if (!cur.staffDirectory) cur.staffDirectory = { opd: [], ipd: [] };
-  if (!cur.staffDirectory.opd) cur.staffDirectory.opd = [];
-  if (!cur.staffDirectory.ipd) cur.staffDirectory.ipd = [];
-  return cur;
-}
-
-function getMonthKey(year, month) { return `${year}-${month}`; }
-
-function ensureMonthData(year, month) {
-  const currentHospital = getActiveHospitalData();
-  const mKey = getMonthKey(year, month);
-  if (!currentHospital.monthlyDuties) currentHospital.monthlyDuties = {};
-  if (!currentHospital.monthlyDuties[mKey]) {
-    currentHospital.monthlyDuties[mKey] = { opd: {}, ipd: {} };
-  }
-
-  ['opd', 'ipd'].forEach(dept => {
-    (currentHospital.staffDirectory[dept] || []).forEach(empName => {
-      if (!currentHospital.monthlyDuties[mKey][dept][empName]) {
-        currentHospital.monthlyDuties[mKey][dept][empName] = Array(31).fill("");
-      }
-    });
-  });
-}
-
-function safeExecute(fn, ...args) {
-  try { return fn(...args); } catch (err) { console.error("Caught:", err); }
-}
-
-function showToast(msg) {
-  const toast = document.getElementById("statusToast");
-  if (!toast) return;
-  toast.innerText = msg;
-  toast.style.display = "block";
-  toast.style.opacity = "1";
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    setTimeout(() => { toast.style.display = "none"; }, 300);
-  }, 2800);
-}
-
-let activePasswordPromiseResolver = null;
-
-function askSecurePassword(title, message, icon = "🔐") {
-  return new Promise((resolve) => {
-    activePasswordPromiseResolver = resolve;
-    document.getElementById("secModalTitle").innerText = title || "सुरक्षा प्रमाणीकरण";
-    document.getElementById("secModalMsg").innerText = message || "पासवर्ड दर्ज करें:";
-    document.getElementById("secModalIcon").innerText = icon || "🔐";
-
-    const input = document.getElementById("secModalInput");
-    input.value = "";
-    input.type = "password";
-    document.getElementById("secModalCheckbox").checked = false;
-    document.getElementById("secModalEyeBtn").innerText = "👁️";
-
-    document.getElementById("securePasswordModal").style.display = "flex";
-    setTimeout(() => input.focus(), 150);
-  });
-}
-
-function togglePasswordVisibility() {
-  const input = document.getElementById("secModalInput");
-  const check = document.getElementById("secModalCheckbox");
-  const eye = document.getElementById("secModalEyeBtn");
-  if (input.type === "password") { input.type = "text"; check.checked = true; eye.innerText = "🙈"; }
-  else { input.type = "password"; check.checked = false; eye.innerText = "👁️"; }
-}
-
-function togglePasswordVisibilityFromCheck(elem) {
-  const input = document.getElementById("secModalInput");
-  const eye = document.getElementById("secModalEyeBtn");
-  if (elem.checked) { input.type = "text"; eye.innerText = "🙈"; }
-  else { input.type = "password"; eye.innerText = "👁️"; }
-}
-
-function submitSecurePasswordModal() {
-  const val = document.getElementById("secModalInput").value;
-  document.getElementById("securePasswordModal").style.display = "none";
-  if (activePasswordPromiseResolver) {
-    activePasswordPromiseResolver(val.trim());
-    activePasswordPromiseResolver = null;
-  }
-}
-
-function cancelSecurePasswordModal() {
-  document.getElementById("securePasswordModal").style.display = "none";
-  if (activePasswordPromiseResolver) {
-    activePasswordPromiseResolver(null);
-    activePasswordPromiseResolver = null;
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("secModalInput");
-  if (input) {
-    input.addEventListener("keyup", (e) => {
-      if (e.key === "Enter") submitSecurePasswordModal();
-      if (e.key === "Escape") cancelSecurePasswordModal();
-    });
-  }
-});
-
-// ==============================================================
-// 3. AUTHENTICATION & WELCOME OWNER ANIMATION
-// ==============================================================
-async function getActiveMasterKey() {
-  let masterKey = "Rinku_OPD_8383";
-  if (multiHospitalMaster.masterPasswordToken) {
-    const decrypted = decryptToken(multiHospitalMaster.masterPasswordToken, "Rinku_SuperAdmin_Key_2026");
-    if (decrypted && decrypted !== "********") masterKey = decrypted;
-  }
-  return masterKey;
-}
-
-function showOwnerWelcomeAnimation() {
-  const modal = document.getElementById("ownerWelcomeModal");
-  if (modal) modal.style.display = "flex";
-}
-
-function closeOwnerWelcome() {
-  const modal = document.getElementById("ownerWelcomeModal");
-  if (modal) modal.style.display = "none";
-}
-
-async function triggerLoginOrUnlock() {
-  if (isUnlocked) {
-    isUnlocked = false; isSuperAdmin = false;
-    applySecurityUI();
-    showToast("🔒 रोस्टर वापस लॉक हो गया!");
-    return;
-  }
-
-  const curHosp = getActiveHospitalData();
-  const enteredPin = await askSecurePassword("Hospital Gate Verification", `"${curHosp.hospitalTitle}" का पासवर्ड दर्ज करें:`);
-  if (enteredPin === null) return;
-
-  const cleanPin = enteredPin.trim();
-  const inputHash = await computeSaltedHash(cleanPin);
-  const masterKey = await getActiveMasterKey();
-  const masterHash = await computeSaltedHash(masterKey);
-
-  if (cleanPin === masterKey || inputHash === masterHash) {
-    isSuperAdmin = true; isUnlocked = true; sessionSuperAdminKey = masterKey;
-    applySecurityUI();
-    showOwnerWelcomeAnimation();
-  } else if (curHosp.adminHash && inputHash === curHosp.adminHash) {
-    isSuperAdmin = false; isUnlocked = true;
-    applySecurityUI();
-    alert(`🔓 पासवर्ड सही है!\n"${curHosp.hospitalTitle}" का रोस्टर खुल गया है।`);
-    showToast("🔓 Roster Unlocked!");
-  } else {
-    isUnlocked = false; isSuperAdmin = false;
-    applySecurityUI();
-    alert("❌ गलत पासवर्ड!");
-  }
-}
-
-function applySecurityUI() {
-  const printArea = document.getElementById("printArea");
-  const lockNotice = document.getElementById("rosterLockedNotice");
-  const badge = document.getElementById("adminBadge");
-  const btn = document.getElementById("btnAdminToggle");
-  const hName = document.getElementById("hospitalNameDisplay");
-  const pInput = document.getElementById("inputPreparedBy");
-  const vInput = document.getElementById("inputVerifiedBy");
-  const iInput = document.getElementById("inputIncharge");
-
-  if (isUnlocked) {
-    printArea.style.display = "block";
-    lockNotice.style.display = "none";
-    document.body.classList.add("unlocked-mode");
-
-    if (isSuperAdmin) {
-      document.body.classList.add("super-admin-mode");
-      badge.className = "admin-badge admin-super";
-      badge.innerHTML = "👑 Owner / Super Admin Active";
-      btn.className = "btn-admin-locked"; btn.innerHTML = "🔒 Lock Roster";
-    } else {
-      document.body.classList.remove("super-admin-mode");
-      badge.className = "admin-badge admin-unlocked";
-      badge.innerHTML = "🔓 Unlocked";
-      btn.className = "btn-admin-locked"; btn.innerHTML = "🔒 Lock Roster";
-    }
-
-    if (hName) hName.contentEditable = "true";
-    if (pInput) pInput.readOnly = false;
-    if (vInput) vInput.readOnly = false;
-    if (iInput) iInput.readOnly = false;
-
-    document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(i => i.readOnly = false);
-  } else {
-    printArea.style.display = "none";
-    lockNotice.style.display = "block";
-    document.body.classList.remove("unlocked-mode", "super-admin-mode");
-    badge.className = "admin-badge admin-locked";
-    badge.innerHTML = "🔒 Roster Locked (पासवर्ड अनिवार्य)";
-    btn.className = "btn-admin"; btn.innerHTML = "🔐 Unlock Roster";
-
-    if (hName) hName.contentEditable = "false";
-    if (pInput) pInput.readOnly = true;
-    if (vInput) vInput.readOnly = true;
-    if (iInput) iInput.readOnly = true;
-
-    document.querySelectorAll(".duty-cell-input, .staff-name-input").forEach(i => i.readOnly = true);
-  }
-}
-
-async function switchHospitalWithAuth(targetHId) {
-  if (hasUnsavedChanges && isUnlocked) {
-    if (confirm("बदलाव सेव करना चाहते हैं?")) saveDatabase(false);
-  }
-
-  if (isSuperAdmin) {
-    multiHospitalMaster.activeHospitalId = targetHId;
-    refreshHospitalUI();
-    return;
-  }
-
-  isUnlocked = false;
-  applySecurityUI();
-
-  const targetHosp = multiHospitalMaster.hospitals[targetHId] || {};
-  const enteredPin = await askSecurePassword("Hospital Gate Verification", `"${targetHosp.hospitalTitle}" का पासवर्ड दर्ज करें:`);
-  if (enteredPin === null) { populateHospitalDropdown(); return; }
-
-  const cleanPin = enteredPin.trim();
-  const inputHash = await computeSaltedHash(cleanPin);
-  const masterKey = await getActiveMasterKey();
-  const masterHash = await computeSaltedHash(masterKey);
-
-  if (cleanPin === masterKey || inputHash === masterHash) {
-    isSuperAdmin = true; isUnlocked = true; sessionSuperAdminKey = masterKey;
-    multiHospitalMaster.activeHospitalId = targetHId;
-    applySecurityUI();
-    showOwnerWelcomeAnimation();
-  } else if (targetHosp.adminHash && inputHash === targetHosp.adminHash) {
-    isUnlocked = true;
-    multiHospitalMaster.activeHospitalId = targetHId;
-    refreshHospitalUI();
-    showToast(`🏥 Unlocked: ${targetHosp.hospitalTitle}`);
-  } else {
-    isUnlocked = false;
-    applySecurityUI();
-    populateHospitalDropdown();
-    alert("❌ गलत पासवर्ड!");
-  }
-}
-
-// ==============================================================
-// 4. ADMIN MASTER VAULT & PASSWORD MANAGEMENT
-// ==============================================================
-async function openPasswordVault() {
-  if (!isSuperAdmin) {
-    alert("⚠️ केवल एडमिन ही यह वॉल्ट देख सकते हैं!");
-    return;
-  }
-
-  const masterKey = await getActiveMasterKey();
-  const tbody = document.getElementById("pwVaultTableBody");
-  tbody.innerHTML = "";
-  let idx = 1;
-
-  const trAdmin = document.createElement("tr");
-  trAdmin.style.background = "#fef3c7";
-  trAdmin.innerHTML = `
-    <td>${idx++}</td>
-    <td style="font-weight:800; color:#b45309;">👑 Admin Master Password (Rinku_OPD_8383)</td>
-    <td><span class="pw-code">${masterKey}</span></td>
-    <td style="text-align: center;">
-      <button type="button" class="btn-admin" style="padding: 4px 8px; font-size: 11px; background: #d97706;" onclick="changeMasterAdminPassword()">✏️ Change</button>
-    </td>
-  `;
-  tbody.appendChild(trAdmin);
-
-  Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
-    const hosp = multiHospitalMaster.hospitals[hId];
-    const decPassword = hosp.encVaultToken ? decryptToken(hosp.encVaultToken, masterKey) : "********";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${idx++}</td>
-      <td style="font-weight:700; color:#1e293b;">${hosp.hospitalTitle}</td>
-      <td><span class="pw-code">${decPassword}</span></td>
-      <td style="text-align: center;">
-        <button type="button" class="btn-admin" style="padding: 4px 8px; font-size: 11px; background: #0284c7;" onclick="changeHospitalPasswordFromVault('${hId}')">✏️ Change</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  document.getElementById("pwVaultModal").style.display = "flex";
-}
-
-async function changeMasterAdminPassword() {
-  if (!isSuperAdmin) return;
-  const masterKey = await getActiveMasterKey();
-
-  const newMaster = prompt("नया एडमिन मास्टर पासवर्ड दर्ज करें:", masterKey);
-  if (newMaster === null) return;
-  const cleanMaster = newMaster.trim();
-  if (!cleanMaster) { alert("⚠️ पासवर्ड खाली नहीं हो सकता!"); return; }
-
-  multiHospitalMaster.masterPasswordToken = encryptToken(cleanMaster, "Rinku_SuperAdmin_Key_2026");
-  sessionSuperAdminKey = cleanMaster;
-
-  Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
-    const hosp = multiHospitalMaster.hospitals[hId];
-    if (hosp.encVaultToken) {
-      const oldPass = decryptToken(hosp.encVaultToken, masterKey);
-      if (oldPass && oldPass !== "********") hosp.encVaultToken = encryptToken(oldPass, cleanMaster);
-    }
-  });
-
-  saveDatabase(false);
-  openPasswordVault();
-  alert(`✅ एडमिन मास्टर पासवर्ड बदलकर "${cleanMaster}" कर दिया गया है!`);
-}
-
-async function changeHospitalPasswordFromVault(hId) {
-  if (!isSuperAdmin) return;
-  const targetHosp = multiHospitalMaster.hospitals[hId];
-  if (!targetHosp) return;
-
-  const masterKey = await getActiveMasterKey();
-  const currentPass = targetHosp.encVaultToken ? decryptToken(targetHosp.encVaultToken, masterKey) : "";
-
-  const newPass = prompt(`अस्पताल "${targetHosp.hospitalTitle}" का नया पासवर्ड दर्ज करें:`, currentPass);
-  if (newPass === null) return;
-  const cleanPass = newPass.trim();
-  if (!cleanPass) { alert("⚠️ पासवर्ड खाली नहीं हो सकता!"); return; }
-
-  targetHosp.adminHash = await computeSaltedHash(cleanPass);
-  targetHosp.encVaultToken = encryptToken(cleanPass, masterKey);
-
-  saveDatabase(false);
-  openPasswordVault();
-  alert(`✅ पासवर्ड अपडेट हो गया! अब नया पासवर्ड ही काम करेगा।`);
-}
-
-function closePasswordVault() {
-  document.getElementById("pwVaultModal").style.display = "none";
-}
-
-// ==============================================================
-// 5. SIGNATURES EDIT LOGIC
-// ==============================================================
-function updateSignaturesFromPanel() {
-  if (!isUnlocked) return;
-  const cur = getActiveHospitalData();
-  if (!cur.signatures) cur.signatures = { preparedBy: "", verifiedBy: "", incharge: "" };
-
-  cur.signatures.preparedBy = document.getElementById("inputPreparedBy").value.trim().toUpperCase();
-  cur.signatures.verifiedBy = document.getElementById("inputVerifiedBy").value.trim().toUpperCase();
-  cur.signatures.incharge = document.getElementById("inputIncharge").value.trim().toUpperCase();
-
-  document.getElementById("signPrepDisplay").innerHTML = `<b>${cur.signatures.preparedBy}</b>`;
-  document.getElementById("signVerDisplay").innerHTML = `<b>${cur.signatures.verifiedBy}</b>`;
-  document.getElementById("signInchDisplay").innerHTML = `<b>${cur.signatures.incharge}</b>`;
-
-  markUnsavedAndDebounce();
-}
-
-// ==============================================================
-// 6. CREATE STRICTLY BLANK HOSPITAL
-// ==============================================================
-async function promptAddNewHospital() {
-  const newName = prompt("नये अस्पताल का नाम लिखें (Enter Hospital Name):");
-  if (!newName || !newName.trim()) return;
-  const cleanTitle = newName.trim().toUpperCase();
-
-  const enteredPass = await askSecurePassword("नये अस्पताल का पासवर्ड सेट करें", `अस्पताल "${cleanTitle}" का एडमिन पासवर्ड बनाएं:`, "🔑");
-  if (enteredPass === null) return;
-  const cleanPass = enteredPass.trim();
-  if (!cleanPass) { alert("⚠️ पासवर्ड आवश्यक है!"); return; }
-
-  const masterKey = await getActiveMasterKey();
-  const saltedHash = await computeSaltedHash(cleanPass);
-  const encVault = encryptToken(cleanPass, masterKey);
-  const newId = "hosp_" + Date.now();
-
-  multiHospitalMaster.hospitals[newId] = createBlankHospitalRoster(cleanTitle, saltedHash, encVault);
-  multiHospitalMaster.activeHospitalId = newId;
-  isUnlocked = true;
-
-  refreshHospitalUI();
-  saveDatabase(false);
-  alert(`✅ नया खाली अस्पताल "${cleanTitle}" बन गया है!\nपासवर्ड: ${cleanPass}`);
-}
-
-// ==============================================================
-// 7. SYNC & STORAGE
-// ==============================================================
-function initRealtimeSync() {
-  const dot = document.getElementById("syncStatusDot");
-  const txt = document.getElementById("syncStatusText");
-
-  loadSavedDatabase();
-  refreshHospitalUI();
-
-  if (!firebaseDb) {
-    if (dot) dot.className = "sync-dot offline";
-    if (txt) txt.innerText = "Offline Storage";
-    return;
-  }
-
-  firebaseDb.ref("multi_hospital_rosters").on("value", (snapshot) => {
-    const cloudData = snapshot.val();
-    if (cloudData && cloudData.hospitals && Object.keys(cloudData.hospitals).length > 0) {
-      Object.keys(cloudData.hospitals).forEach(hId => {
-        if (multiHospitalMaster.hospitals[hId] && multiHospitalMaster.hospitals[hId].adminHash && !cloudData.hospitals[hId].adminHash) {
-          cloudData.hospitals[hId].adminHash = multiHospitalMaster.hospitals[hId].adminHash;
-          cloudData.hospitals[hId].encVaultToken = multiHospitalMaster.hospitals[hId].encVaultToken;
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_DATABASE_NAME.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    let db = null;
+    try {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
-      });
-      multiHospitalMaster = cloudData;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
-      refreshHospitalUI();
-      if (dot) dot.className = "sync-dot";
-      if (txt) txt.innerText = "Synced ☁️";
+        db = firebase.database();
+    } catch(e) {
+        console.log("Firebase initialization warning.");
     }
-  });
-}
 
-function saveDatabase(showAlertPopup = true) {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
-  hasUnsavedChanges = false;
+    let masterAdminPassword = localStorage.getItem('hospital_master_pwd') || "Rinku_OPD_4545";
 
-  if (firebaseDb) {
-    firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster).then(() => {
-      if (showAlertPopup) { alert("✅ डेटा सुरक्षित सेव हो गया!"); showToast("☁️ Synced!"); }
-    }).catch(() => { if (showAlertPopup) alert("✅ लोकल सेव हो गया!"); });
-  }
-}
+    let defaultData = {
+        hospitals: {
+            "TIBBIA COLLAGE AND HOSPITAL KAROL BAGH": {
+                password: "123",
+                opdStaff: ["RINKU", "RAJENDRA", "SUSHIL", "SUNITA", "AMIT BALIMAHARAN"],
+                ipdStaff: ["SACHIN", "DHARMENDER", "VISHAL", "KUNAL RELIEVER", "RINKU"],
+                opdRoster: {},
+                ipdRoster: {}
+            }
+        },
+        currentHospital: "TIBBIA COLLAGE AND HOSPITAL KAROL BAGH",
+        isAdmin: false,
+        isMasterAdmin: false,
+        isLocked: true
+    };
 
-function loadSavedDatabase() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.hospitals) multiHospitalMaster = parsed;
+    let appData = JSON.parse(localStorage.getItem('hospital_roster_cloud_v37')) || defaultData;
+    let isRemoteUpdate = false;
+    let saveTimeout = null;
+
+    appData.isLocked = true;
+    appData.isAdmin = false;
+    appData.isMasterAdmin = false;
+
+    window.onload = function() {
+        initLoginHospitalDropdown();
+
+        if (db) {
+            db.ref('hospital_duty_roster_cloud_data').on('value', (snapshot) => {
+                let serverData = snapshot.val();
+                if (serverData && !isRemoteUpdate) {
+                    appData = serverData;
+                    localStorage.setItem('hospital_roster_cloud_v37', JSON.stringify(appData));
+                    initLoginHospitalDropdown();
+                    if(document.getElementById('mainAppContainer').style.display === 'block') {
+                        initHospitalDropdown();
+                        renderAll();
+                    }
+                    document.getElementById('firebaseStatus').textContent = "● Live Cloud Connected";
+                }
+            }, (error) => {
+                document.getElementById('firebaseStatus').textContent = "● Offline Mode";
+            });
+        } else {
+            document.getElementById('firebaseStatus').textContent = "● Offline Mode";
+        }
+    };
+
+    function initLoginHospitalDropdown() {
+        const loginSelect = document.getElementById('loginHospitalSelect');
+        loginSelect.innerHTML = '';
+        if (!appData.hospitals) appData.hospitals = {};
+        for (let hName in appData.hospitals) {
+            let opt = document.createElement('option');
+            opt.value = hName;
+            opt.textContent = hName;
+            loginSelect.appendChild(opt);
+        }
     }
-  } catch (err) {}
-}
 
-function populateHospitalDropdown() {
-  const sel = document.getElementById("hospitalSelector");
-  if (!sel) return;
-  sel.innerHTML = "";
-  Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
-    const opt = document.createElement("option");
-    opt.value = hId;
-    opt.text = multiHospitalMaster.hospitals[hId].hospitalTitle || hId;
-    if (hId === multiHospitalMaster.activeHospitalId) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-async function deleteCurrentHospital() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  const currentHospital = getActiveHospitalData();
-  const keys = Object.keys(multiHospitalMaster.hospitals);
-  if (keys.length <= 1) { alert("कम से कम एक अस्पताल रहना अनिवार्य है!"); return; }
-
-  if (!isSuperAdmin) {
-    const verifyPin = await askSecurePassword("अस्पताल हटाने का सत्यापन", `"${currentHospital.hospitalTitle}" को हटाने के लिए पासवर्ड दें:`, "⚠️");
-    if (verifyPin === null) return;
-    const cleanPin = verifyPin.trim();
-    const inputHash = await computeSaltedHash(cleanPin);
-    if (inputHash !== currentHospital.adminHash) { alert("❌ गलत पासवर्ड!"); return; }
-  }
-
-  if (confirm(`⚠️ क्या आप "${currentHospital.hospitalTitle}" को हमेशा के लिए हटाना चाहते हैं?`)) {
-    const deletingId = multiHospitalMaster.activeHospitalId;
-    delete multiHospitalMaster.hospitals[deletingId];
-    multiHospitalMaster.activeHospitalId = Object.keys(multiHospitalMaster.hospitals)[0];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
-
-    if (firebaseDb) {
-      firebaseDb.ref(`multi_hospital_rosters/hospitals/${deletingId}`).remove();
-      firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster);
+    function toggleLoginPasswordVisibility() {
+        let pwdInput = document.getElementById('loginPasswordInput');
+        let eyeBtn = document.getElementById('loginEyeBtn');
+        if (pwdInput.type === "password") {
+            pwdInput.type = "text";
+            eyeBtn.textContent = "Hide";
+        } else {
+            pwdInput.type = "password";
+            eyeBtn.textContent = "Show";
+        }
     }
-    refreshHospitalUI();
-    alert("🗑️ अस्पताल हटा दिया गया!");
-  }
-}
 
-function onHospitalNameEdited() {
-  const newTitle = document.getElementById("hospitalNameDisplay").innerText.trim();
-  const current = getActiveHospitalData();
-  if (newTitle && newTitle !== current.hospitalTitle) {
-    current.hospitalTitle = newTitle;
-    populateHospitalDropdown();
-    markUnsavedAndDebounce();
-  }
-}
+    function loginScreenCreateHospital() {
+        let hName = prompt("Enter New Hospital Name:");
+        if (!hName) return;
+        hName = hName.trim();
+        if (!hName) return;
+        
+        if (appData.hospitals[hName]) {
+            alert("Hospital already exists!");
+            return;
+        }
+        let hPass = prompt(`Create security password for hospital "${hName}":`);
+        if (!hPass) {
+            alert("Password is required to secure the new hospital roster!");
+            return;
+        }
+        
+        appData.hospitals[hName] = {
+            password: hPass,
+            opdStaff: [],
+            ipdStaff: [],
+            opdRoster: {},
+            ipdRoster: {}
+        };
+        
+        appData.currentHospital = hName;
+        appData.isLocked = false;
+        appData.isAdmin = true;
+        appData.isMasterAdmin = false; // Strictly standard hospital admin, NOT master admin
+        saveDataToCloud(true);
+        initLoginHospitalDropdown();
 
-function refreshHospitalUI() {
-  const current = getActiveHospitalData();
-  document.getElementById("hospitalNameDisplay").innerText = current.hospitalTitle;
-  
-  if (!current.signatures) current.signatures = { preparedBy: "", verifiedBy: "", incharge: "" };
-  
-  document.getElementById("inputPreparedBy").value = current.signatures.preparedBy || "";
-  document.getElementById("inputVerifiedBy").value = current.signatures.verifiedBy || "";
-  document.getElementById("inputIncharge").value = current.signatures.incharge || "";
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('mainAppContainer').style.display = 'block';
 
-  document.getElementById("signPrepDisplay").innerHTML = `<b>${current.signatures.preparedBy || ""}</b>`;
-  document.getElementById("signVerDisplay").innerHTML = `<b>${current.signatures.verifiedBy || ""}</b>`;
-  document.getElementById("signInchDisplay").innerHTML = `<b>${current.signatures.incharge || ""}</b>`;
-
-  populateHospitalDropdown();
-  ensureMonthData(currentYear, currentMonth);
-  renderRosterView();
-  applySecurityUI();
-}
-
-window.addEventListener("beforeunload", function (e) {
-  if (hasUnsavedChanges && isUnlocked) {
-    e.preventDefault(); e.returnValue = "बदलाव सेव करना चाहते हैं?"; return e.returnValue;
-  }
-});
-
-let autoSaveTimer = null;
-function markUnsavedAndDebounce() {
-  if (!isUnlocked) return;
-  hasUnsavedChanges = true;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => { safeExecute(saveDatabase, false); hasUnsavedChanges = false; }, 600);
-}
-
-function manualSave() { saveDatabase(true); }
-
-function downloadJsonBackup() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(multiHospitalMaster, null, 2));
-  const dl = document.createElement('a');
-  dl.setAttribute("href", dataStr);
-  dl.setAttribute("download", `Backup_${currentYear}.json`);
-  dl.click();
-}
-
-function resetCurrentHospitalRoster() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  if (confirm("रोस्टर रीसेट करना चाहते हैं?")) {
-    const cur = getActiveHospitalData();
-    cur.monthlyDuties = {};
-    ensureMonthData(currentYear, currentMonth);
-    renderRosterView();
-    saveDatabase(false);
-  }
-}
-
-function populateYearSelect() {
-  const ySelect = document.getElementById("yearSelect");
-  if (!ySelect) return;
-  ySelect.innerHTML = "";
-  for (let y = 2024; y <= 2035; y++) {
-    const opt = document.createElement("option");
-    opt.value = y; opt.text = y;
-    if (y === currentYear) opt.selected = true;
-    ySelect.appendChild(opt);
-  }
-  document.getElementById("monthSelect").value = currentMonth;
-}
-
-function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
-
-function onDateConfigChange() {
-  currentMonth = parseInt(document.getElementById("monthSelect").value);
-  currentYear = parseInt(document.getElementById("yearSelect").value);
-  ensureMonthData(currentYear, currentMonth);
-  renderRosterView();
-  applySecurityUI();
-}
-
-function setupColGroup(numDays) {
-  const colGroup = document.getElementById("tableColGroup");
-  let cgHtml = `<col style="width: 22px;"><col style="width: 120px;">`;
-  for (let d = 1; d <= numDays; d++) cgHtml += `<col style="width: 21px;">`;
-  cgHtml += `<col style="width: 36px;"><col style="width: 34px;"><col style="width: 34px;">`;
-  colGroup.innerHTML = cgHtml;
-}
-
-function renderRosterView() {
-  const numDays = getDaysInMonth(currentYear, currentMonth);
-  document.getElementById("daysCountBadge").innerText = numDays;
-  document.getElementById("monthYearBadge").innerText = `MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`;
-  setupColGroup(numDays);
-  buildTable(numDays);
-}
-
-function generateHeaderRowHtml(numDays) {
-  let dHtml = `<tr style="background:#d8e8f5; height:19px;"><th style="font-size:7.5px;">#</th><th style="text-align:left; padding-left:6px; font-size:8px;">STAFF NAME</th>`;
-  for (let d = 1; d <= numDays; d++) {
-    const dateObj = new Date(currentYear, currentMonth, d);
-    const dayName = DAYS_OF_WEEK[dateObj.getDay()];
-    const isSun = (dayName === "SUN") ? "sun-header" : "";
-    dHtml += `<th class="${isSun}">${d}</th>`;
-  }
-  dHtml += `<th style="background:#dcfce7; color:#166534; font-size:7.5px;">DUTY</th><th style="background:#fef9c3; color:#854d0e; font-size:7.5px;">OFF</th><th style="font-size:7.5px;">TOTAL</th></tr>`;
-
-  let dayHtml = `<tr style="background:#eef6fc; height:18px;"><th style="font-size:7px; color:#64748b;">NO.</th><th style="text-align:left; padding-left:6px; font-size:7px; color:#64748b;">EMPLOYEE</th>`;
-  for (let d = 1; d <= numDays; d++) {
-    const dateObj = new Date(currentYear, currentMonth, d);
-    const dayName = DAYS_OF_WEEK[dateObj.getDay()];
-    const isSun = (dayName === "SUN") ? "sun-header" : "";
-    dayHtml += `<th class="${isSun}" style="font-size:7px;">${dayName}</th>`;
-  }
-  dayHtml += `<th style="background:#dcfce7; color:#166534; font-size:7px;">DAYS</th><th style="background:#fef9c3; color:#854d0e; font-size:7px;">DAYS</th><th style="font-size:7px; color:#64748b;">DAYS</th></tr>`;
-  return dHtml + dayHtml;
-}
-
-function parseDutyCode(code) {
-  if (!code) return { duty: 0, off: 0, cls: "" };
-  const str = code.trim().toUpperCase();
-  if (str.includes("+") || ["MN", "NM", "NE", "EN", "ME", "EM"].includes(str)) return { duty: 2, off: 0, cls: "color-double" };
-  if (str === "GH" || str === "GHD") return { duty: 1, off: 0, cls: "color-gh" };
-  if (str === "OFF" || str === "WO" || str === "W/O") return { duty: 0, off: 1, cls: "color-off" };
-  return { duty: 1, off: 0, cls: "color-single-white" };
-}
-
-function buildTable(numDays) {
-  const tbody = document.getElementById("tableBody");
-  const currentHospital = getActiveHospitalData();
-  const mKey = getMonthKey(currentYear, currentMonth);
-  const currentMonthData = currentHospital.monthlyDuties[mKey] || { opd: {}, ipd: {} };
-
-  let html = `<tr><td colspan="${numDays + 5}" class="dept-banner opd-banner">1. OPD REGISTRATION DEPARTMENT</td></tr>`;
-  html += generateHeaderRowHtml(numDays);
-  (currentHospital.staffDirectory.opd || []).forEach((staffName, idx) => {
-    const dutiesArr = (currentMonthData.opd && currentMonthData.opd[staffName]) ? currentMonthData.opd[staffName] : Array(31).fill("");
-    html += buildStaffRow("opd", idx, staffName, dutiesArr, numDays);
-  });
-
-  html += `<tr><td colspan="${numDays + 5}" style="height:6px; background:#f1f5f9;"></td></tr>`;
-  html += `<tr><td colspan="${numDays + 5}" class="dept-banner ipd-banner">2. IPD REGISTRATION DEPARTMENT</td></tr>`;
-  html += generateHeaderRowHtml(numDays);
-  (currentHospital.staffDirectory.ipd || []).forEach((staffName, idx) => {
-    const dutiesArr = (currentMonthData.ipd && currentMonthData.ipd[staffName]) ? currentMonthData.ipd[staffName] : Array(31).fill("");
-    html += buildStaffRow("ipd", idx, staffName, dutiesArr, numDays);
-  });
-
-  tbody.innerHTML = html;
-  recomputeTotals(numDays);
-  populateDeleteDropdown();
-}
-
-function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
-  let row = `<tr><td>${idx + 1}</td><td class="staff-name-col"><input type="text" class="staff-name-input" value="${staffName}" ${isUnlocked ? '' : 'readonly'} onchange="modifyStaffName('${dept}', ${idx}, this.value)"></td>`;
-  for (let d = 0; d < numDays; d++) {
-    const val = dutiesArr[d] || "";
-    const res = parseDutyCode(val);
-    row += `<td class="${res.cls}"><input type="text" class="duty-cell-input" value="${val}" ${isUnlocked ? '' : 'readonly'} oninput="onDutyInput(this, '${dept}', '${staffName}', ${d})" onblur="recomputeTotals(${numDays})"></td>`;
-  }
-  row += `<td id="${dept}_tot_duty_${idx}" class="tot-duty-cell">0</td><td id="${dept}_tot_off_${idx}" class="tot-off-cell">0</td><td id="${dept}_tot_days_${idx}" class="tot-days-cell">${numDays}</td></tr>`;
-  return row;
-}
-
-function onDutyInput(elem, dept, staffName, dayIdx) {
-  if (!isUnlocked) return;
-  const upperVal = elem.value.toUpperCase();
-  
-  // Update local model directly without re-rendering the whole table so cursor/focus stays perfectly!
-  const currentHospital = getActiveHospitalData();
-  const mKey = getMonthKey(currentYear, currentMonth);
-  if (!currentHospital.monthlyDuties[mKey][dept][staffName]) currentHospital.monthlyDuties[mKey][dept][staffName] = Array(31).fill("");
-  currentHospital.monthlyDuties[mKey][dept][staffName][dayIdx] = upperVal;
-  
-  elem.parentElement.className = parseDutyCode(upperVal).cls;
-  recomputeTotals();
-  markUnsavedAndDebounce();
-}
-
-function recomputeTotals(numDays) {
-  if (!numDays) numDays = getDaysInMonth(currentYear, currentMonth);
-  const currentHospital = getActiveHospitalData();
-  const mKey = getMonthKey(currentYear, currentMonth);
-  const monthData = currentHospital.monthlyDuties[mKey];
-
-  ["opd", "ipd"].forEach(dept => {
-    (currentHospital.staffDirectory[dept] || []).forEach((staffName, idx) => {
-      const dutiesArr = (monthData && monthData[dept] && monthData[dept][staffName]) ? monthData[dept][staffName] : [];
-      let totalDuty = 0, totalOff = 0;
-      for (let d = 0; d < numDays; d++) {
-        const res = parseDutyCode(dutiesArr[d] || "");
-        totalDuty += res.duty; totalOff += res.off;
-      }
-      const dCell = document.getElementById(`${dept}_tot_duty_${idx}`);
-      const oCell = document.getElementById(`${dept}_tot_off_${idx}`);
-      if (dCell) dCell.innerText = totalDuty;
-      if (oCell) oCell.innerText = totalOff;
-    });
-  });
-}
-
-function modifyStaffName(dept, idx, newName) {
-  if (!isUnlocked) return;
-  const currentHospital = getActiveHospitalData();
-  const oldName = currentHospital.staffDirectory[dept][idx];
-  const cleaned = newName.trim().toUpperCase();
-  if (!cleaned || cleaned === oldName) return;
-  currentHospital.staffDirectory[dept][idx] = cleaned;
-
-  Object.keys(currentHospital.monthlyDuties).forEach(mKey => {
-    if (currentHospital.monthlyDuties[mKey][dept] && currentHospital.monthlyDuties[mKey][dept][oldName]) {
-      currentHospital.monthlyDuties[mKey][dept][cleaned] = currentHospital.monthlyDuties[mKey][dept][oldName];
-      delete currentHospital.monthlyDuties[mKey][dept][oldName];
+        initHospitalDropdown();
+        renderAll();
+        updateRoleBadge();
+        updateLockStatusDisplay();
+        document.getElementById('adminVaultBtn').style.display = "none"; // Hide vault for new hospital creator
+        alert(`Hospital "${hName}" created successfully and unlocked!`);
     }
-  });
-  populateDeleteDropdown();
-  markUnsavedAndDebounce();
-}
 
-function addEmployee() {
-  if (!isUnlocked) return;
-  const dept = document.getElementById("targetDept").value.toLowerCase();
-  const nameInput = document.getElementById("inputStaffName");
-  const name = nameInput.value.trim().toUpperCase();
-  const currentHospital = getActiveHospitalData();
+    function authenticateAndUnlock() {
+        let selectedH = document.getElementById('loginHospitalSelect').value;
+        let password = document.getElementById('loginPasswordInput').value;
 
-  if (!name) { alert("कृपया नाम लिखें!"); return; }
-  if (!currentHospital.staffDirectory[dept]) currentHospital.staffDirectory[dept] = [];
-  if (currentHospital.staffDirectory[dept].includes(name)) { alert("कर्मचारी पहले से मौजूद है!"); return; }
-  currentHospital.staffDirectory[dept].push(name);
-  ensureMonthData(currentYear, currentMonth);
-  nameInput.value = "";
-  renderRosterView();
-  markUnsavedAndDebounce();
-}
+        if (!password) {
+            alert("Please enter password!");
+            return;
+        }
 
-function populateDeleteDropdown() {
-  const dept = document.getElementById("deleteDept").value.toLowerCase();
-  const sel = document.getElementById("deleteStaffSelect");
-  const currentHospital = getActiveHospitalData();
-  if (!sel) return;
-  sel.innerHTML = "";
-  (currentHospital.staffDirectory[dept] || []).forEach((sName, i) => {
-    const opt = document.createElement("option");
-    opt.value = i; opt.text = `${i + 1}. ${sName}`;
-    sel.appendChild(opt);
-  });
-}
+        let h = appData.hospitals[selectedH];
 
-async function deleteSelectedEmployee() {
-  if (!isUnlocked) return;
-  const dept = document.getElementById("deleteDept").value.toLowerCase();
-  const sel = document.getElementById("deleteStaffSelect");
-  const idx = parseInt(sel.value);
-  const currentHospital = getActiveHospitalData();
+        if (password === masterAdminPassword) {
+            appData.isMasterAdmin = true;
+            appData.isAdmin = true;
+            appData.currentHospital = selectedH;
+            appData.isLocked = false;
+        } else if (password === h.password) {
+            appData.isMasterAdmin = false; // Regular hospital user
+            appData.isAdmin = true;
+            appData.currentHospital = selectedH;
+            appData.isLocked = false;
+        } else {
+            alert("Incorrect Password for " + selectedH + "! Access Denied.");
+            return;
+        }
 
-  if (isNaN(idx) || !currentHospital.staffDirectory[dept][idx]) return;
-  const empName = currentHospital.staffDirectory[dept][idx];
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('mainAppContainer').style.display = 'block';
 
-  if (confirm(`क्या आप "${empName}" को हटाना चाहते हैं?`)) {
-    currentHospital.staffDirectory[dept].splice(idx, 1);
-    Object.keys(currentHospital.monthlyDuties).forEach(mKey => {
-      if (currentHospital.monthlyDuties[mKey][dept]) delete currentHospital.monthlyDuties[mKey][dept][empName];
-    });
-    renderRosterView();
-    markUnsavedAndDebounce();
-  }
-}
+        initHospitalDropdown();
+        renderAll();
+        updateRoleBadge();
+        updateLockStatusDisplay();
+    }
 
-function downloadPdfDirect() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  showToast("⏳ PDF तैयार हो रही है...");
-  const element = document.getElementById('printArea');
-  const opt = {
-    margin: [2, 2, 2, 2],
-    filename: `Duty_Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.pdf`,
-    image: { type: 'jpeg', quality: 1.0 },
-    html2canvas: { scale: 3.5, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
-  };
-  html2pdf().set(opt).from(element).save().then(() => showToast("✅ PDF डाउनलोड हो गई!"));
-}
+    function initHospitalDropdown() {
+        const select = document.getElementById('hospitalSelect');
+        select.innerHTML = '';
+        for (let hName in appData.hospitals) {
+            let opt = document.createElement('option');
+            opt.value = hName;
+            opt.textContent = hName;
+            if (hName === appData.currentHospital) opt.selected = true;
+            select.appendChild(opt);
+        }
+        if (appData.currentHospital && appData.hospitals[appData.currentHospital]) {
+            document.getElementById('reportHospitalTitle').textContent = appData.currentHospital;
+        }
+    }
 
-function shareToWhatsApp() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  const currentHospital = getActiveHospitalData();
-  let text = `*🏥 ${currentHospital.hospitalTitle}*\n*📋 ROSTER - ${MONTH_NAMES[currentMonth]} ${currentYear}*\n\n`;
-  if (navigator.share) navigator.share({ title: 'Roster', text: text }).catch(() => {});
-  else window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-}
+    async function switchHospital() {
+        let selectedH = document.getElementById('hospitalSelect').value;
+        if (!selectedH) return;
 
-function exportDutyRosterToExcel() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
-  const currentHospital = getActiveHospitalData();
-  const numDays = getDaysInMonth(currentYear, currentMonth);
-  const mKey = getMonthKey(currentYear, currentMonth);
-  const mData = currentHospital.monthlyDuties[mKey] || { opd: {}, ipd: {} };
+        if (appData.isMasterAdmin) {
+            appData.currentHospital = selectedH;
+            initHospitalDropdown();
+            renderAll();
+            return;
+        }
 
-  const wb = XLSX.utils.book_new();
-  const data = [[currentHospital.hospitalTitle], [`MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`], []];
+        let enteredPass = prompt(`Enter security password for hospital "${selectedH}": (Or enter Master Admin Password)`);
+        let h = appData.hospitals[selectedH];
 
-  function addExcelSec(title, deptKey, list) {
-    data.push([title]);
-    const r1 = ["#", "STAFF NAME"];
-    for (let d = 1; d <= numDays; d++) r1.push(d);
-    r1.push("TOTAL DUTY", "TOTAL OFF");
-    data.push(r1);
+        if (enteredPass === masterAdminPassword) {
+            appData.isMasterAdmin = true;
+            appData.isAdmin = true;
+            appData.currentHospital = selectedH;
+            appData.isLocked = false;
+            updateRoleBadge();
+            initHospitalDropdown();
+            renderAll();
+            alert(`Switched to "${selectedH}" with Master Admin access!`);
+        } else if (enteredPass === h.password) {
+            appData.isMasterAdmin = false;
+            appData.isAdmin = true;
+            appData.currentHospital = selectedH;
+            appData.isLocked = false;
+            updateRoleBadge();
+            initHospitalDropdown();
+            renderAll();
+            alert(`Hospital "${selectedH}" unlocked successfully!`);
+        } else {
+            alert("Incorrect Password!");
+            document.getElementById('hospitalSelect').value = appData.currentHospital;
+        }
+    }
 
-    (list || []).forEach((sName, i) => {
-      const row = [i + 1, sName];
-      const dArr = (mData[deptKey] && mData[deptKey][sName]) ? mData[deptKey][sName] : [];
-      let dCount = 0, offCount = 0;
-      for (let d = 0; d < numDays; d++) {
-        const val = dArr[d] || "";
-        row.push(val);
-        const res = parseDutyCode(val);
-        dCount += res.duty; offCount += res.off;
-      }
-      row.push(dCount, offCount);
-      data.push(row);
-    });
-    data.push([]);
-  }
+    function openAdminVaultModal() {
+        if (!appData.isMasterAdmin) {
+            alert("Access Denied! Only Master Admin can access this panel.");
+            return;
+        }
+        let tbody = document.getElementById('vaultTableBody');
+        tbody.innerHTML = '';
+        let idx = 0;
+        for (let hName in appData.hospitals) {
+            let pwd = appData.hospitals[hName].password;
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td style="font-weight:bold; text-align:left; padding:6px;">${hName}</td>
+                            <td style="padding:6px;">
+                                <span id="pwd_text_${idx}" style="font-family:monospace; font-weight:bold; color:#0369a1;">••••••</span>
+                                <button class="btn btn-slate" style="padding:1px 4px; font-size:9px; display:inline-block; margin-left:6px;" onclick="toggleVaultPassword(${idx}, '${pwd}')" id="eye_btn_${idx}">Show</button>
+                            </td>
+                            <td style="padding:6px; display:flex; gap:4px; justify-content:center;">
+                                <button class="btn btn-blue" style="padding:2px 6px; font-size:10px;" onclick="adminChangeHospitalPassword('${hName}')">Change Password</button>
+                                <button class="btn btn-red" style="padding:2px 6px; font-size:10px;" onclick="adminDeleteHospitalFromVault('${hName}')">Delete</button>
+                            </td>`;
+            tbody.appendChild(tr);
+            idx++;
+        }
+        document.getElementById('adminVaultModal').style.display = 'flex';
+    }
 
-  addExcelSec("1. OPD", "opd", currentHospital.staffDirectory.opd);
-  addExcelSec("2. IPD", "ipd", currentHospital.staffDirectory.ipd);
+    function toggleVaultPassword(idx, actualPassword) {
+        let span = document.getElementById(`pwd_text_${idx}`);
+        let btn = document.getElementById(`eye_btn_${idx}`);
+        if (span.textContent === "••••••") {
+            span.textContent = actualPassword;
+            btn.textContent = "Hide";
+            btn.style.background = "#dc2626";
+        } else {
+            span.textContent = "••••••";
+            btn.textContent = "Show";
+            btn.style.background = "#64748b";
+        }
+    }
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, "Roster");
-  XLSX.writeFile(wb, `Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.xlsx`);
-  showToast("📊 एक्सेल डाउनलोड हो गई!");
-}
+    function closeAdminVaultModal() {
+        document.getElementById('adminVaultModal').style.display = 'none';
+    }
 
-window.onload = () => {
-  populateYearSelect();
-  initRealtimeSync();
-  applySecurityUI();
-};
+    function adminChangeHospitalPassword(hName) {
+        let newPwd = prompt(`Enter new security password for hospital "${hName}":`);
+        if (!newPwd) return;
+        appData.hospitals[hName].password = newPwd;
+        saveDataToCloud(true);
+        openAdminVaultModal();
+        alert(`Password for "${hName}" successfully updated!`);
+    }
+
+    function adminDeleteHospitalFromVault(hName) {
+        if (confirm(`Are you sure you want to delete hospital "${hName}" from the vault?`)) {
+            delete appData.hospitals[hName];
+            let remaining = Object.keys(appData.hospitals);
+            if (remaining.length === 0) {
+                appData.hospitals["Default Hospital"] = { password: "123", opdStaff: [], ipdStaff: [], opdRoster: {}, ipdRoster: {} };
+                remaining = ["Default Hospital"];
+            }
+            appData.currentHospital = remaining[0];
+            saveDataToCloud(true);
+            openAdminVaultModal();
+            initHospitalDropdown();
+            renderAll();
+        }
+    }
+
+    function changeAdminMasterPasswordPrompt() {
+        let currentP = prompt("Enter current Master Admin Password:");
+        if (currentP !== masterAdminPassword) {
+            alert("Incorrect current password!");
+            return;
+        }
+        let newP = prompt("Enter new Master Admin Password:");
+        if (!newP) return;
+        let confirmP = prompt("Confirm new Master Admin Password:");
+        if (newP !== confirmP) {
+            alert("Passwords do not match!");
+            return;
+        }
+        masterAdminPassword = newP;
+        localStorage.setItem('hospital_master_pwd', masterAdminPassword);
+        alert("✅ Master Admin Password updated successfully!");
+    }
+
+    function updateRoleBadge() {
+        const badge = document.getElementById('activeRoleDisplay');
+        const vaultBtn = document.getElementById('adminVaultBtn');
+
+        if (appData.isMasterAdmin && !appData.isLocked) {
+            badge.textContent = `👑 Master Admin (${appData.currentHospital})`;
+            badge.style.background = "#fee2e2";
+            badge.style.color = "#991b1b";
+            if (vaultBtn) vaultBtn.style.display = "inline-flex"; // Strictly visible ONLY for Master Admin
+        } else if (appData.isAdmin && !appData.isLocked) {
+            badge.textContent = `👤 Hospital Admin (${appData.currentHospital})`;
+            badge.style.background = "#dcfce7";
+            badge.style.color = "#16a34a";
+            if (vaultBtn) vaultBtn.style.display = "none"; // Strictly hidden for regular hospital users
+        } else {
+            badge.textContent = "🔒 Locked (Read Only)";
+            badge.style.background = "#fef3c7";
+            badge.style.color = "#92400e";
+            if (vaultBtn) vaultBtn.style.display = "none";
+        }
+    }
+
+    function updateLockStatusDisplay() {
+        document.getElementById('lockStatusText').textContent = appData.isLocked ? "🔒 Unlock Roster" : "🔓 Lock Roster";
+        updateRoleBadge();
+    }
+
+    function createNewHospitalPrompt() {
+        loginScreenCreateHospital();
+    }
+
+    function deleteCurrentHospital() {
+        let hName = appData.currentHospital;
+        if (!hName) return;
+        let pass = prompt(`Enter hospital password or Master Admin Password to delete "${hName}":`);
+        let h = appData.hospitals[hName];
+        if (pass !== masterAdminPassword && pass !== h.password) {
+            alert("Incorrect password! Cannot delete roster.");
+            return;
+        }
+
+        if (confirm(`Delete entire hospital roster for "${hName}"?`)) {
+            delete appData.hospitals[hName];
+            let remaining = Object.keys(appData.hospitals);
+            if (remaining.length === 0) {
+                appData.hospitals["Default Hospital"] = { password: "123", opdStaff: [], ipdStaff: [], opdRoster: {}, ipdRoster: {} };
+                remaining = ["Default Hospital"];
+            }
+            appData.currentHospital = remaining[0];
+            saveDataToCloud(true);
+            
+            document.getElementById('mainAppContainer').style.display = 'none';
+            document.getElementById('authOverlay').style.display = 'flex';
+            initLoginHospitalDropdown();
+        }
+    }
+
+    function addStaff() {
+        if (appData.isLocked && !appData.isAdmin) {
+            alert("Roster is locked!");
+            return;
+        }
+        let dept = document.getElementById('targetDeptAdd').value;
+        let nameInput = document.getElementById('staffNameInput');
+        let name = nameInput.value.trim().toUpperCase();
+        if (!name) {
+            alert("Please enter employee name!");
+            return;
+        }
+        let h = appData.hospitals[appData.currentHospital];
+        if (!h) return;
+
+        if (dept === 'OPD') {
+            if (!h.opdStaff) h.opdStaff = [];
+            h.opdStaff.push(name);
+        } else {
+            if (!h.ipdStaff) h.ipdStaff = [];
+            h.ipdStaff.push(name);
+        }
+        nameInput.value = "";
+        renderAll();
+        saveDataToCloud(false);
+    }
+
+    function deleteSelectedStaff() {
+        if (appData.isLocked && !appData.isAdmin) {
+            alert("Roster is locked!");
+            return;
+        }
+        let dept = document.getElementById('targetDeptDel').value;
+        let selectBox = document.getElementById('staffDeleteSelect');
+        let nameIdx = selectBox.value;
+        if (nameIdx === "" || nameIdx === null) {
+            alert("Please select staff to delete!");
+            return;
+        }
+        nameIdx = parseInt(nameIdx);
+        let h = appData.hospitals[appData.currentHospital];
+        
+        if (dept === 'OPD') {
+            h.opdStaff.splice(nameIdx, 1);
+            let newRoster = {};
+            for (let k in h.opdRoster) {
+                let parts = k.split('_');
+                let idx = parseInt(parts[0]);
+                let day = parts[1];
+                if (idx < nameIdx) newRoster[k] = h.opdRoster[k];
+                else if (idx > nameIdx) newRoster[`${idx - 1}_${day}`] = h.opdRoster[k];
+            }
+            h.opdRoster = newRoster;
+        } else {
+            h.ipdStaff.splice(nameIdx, 1);
+            let newRoster = {};
+            for (let k in h.ipdRoster) {
+                let parts = k.split('_');
+                let idx = parseInt(parts[0]);
+                let day = parts[1];
+                if (idx < nameIdx) newRoster[k] = h.ipdRoster[k];
+                else if (idx > nameIdx) newRoster[`${idx - 1}_${day}`] = h.ipdRoster[k];
+            }
+            h.ipdRoster = newRoster;
+        }
+        renderAll();
+        saveDataToCloud(false);
+    }
+
+    function renderAll() {
+        if (!appData.currentHospital || !appData.hospitals[appData.currentHospital]) return;
+        renderDepartmentTable('OPD');
+        renderDepartmentTable('IPD');
+        updateDeleteStaffDropdown();
+    }
+
+    function updateDeleteStaffDropdown() {
+        let dept = document.getElementById('targetDeptDel').value;
+        let select = document.getElementById('staffDeleteSelect');
+        select.innerHTML = '';
+        let h = appData.hospitals[appData.currentHospital];
+        if (!h) return;
+        let staffList = dept === 'OPD' ? h.opdStaff : h.ipdStaff;
+        if (!staffList) return;
+        
+        staffList.forEach((name, idx) => {
+            let opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = `${idx + 1}. ${name}`;
+            select.appendChild(opt);
+        });
+    }
+
+    document.getElementById('targetDeptDel').addEventListener('change', updateDeleteStaffDropdown);
+
+    function renderDepartmentTable(deptType) {
+        let h = appData.hospitals[appData.currentHospital];
+        if (!h) return;
+        let staffList = deptType === 'OPD' ? (h.opdStaff || []) : (h.ipdStaff || []);
+        let rosterData = deptType === 'OPD' ? (h.opdRoster || {}) : (h.ipdRoster || {});
+        
+        let daysInMonth = 30;
+        let headId = deptType === 'OPD' ? 'opdHead' : 'ipdHead';
+        let bodyId = deptType === 'OPD' ? 'opdBody' : 'ipdBody';
+        let daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        let headHtml = `<tr><th>NO.</th><th>EMPLOYEE NAME</th>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+            let dayName = daysOfWeek[(d - 1) % 7];
+            headHtml += `<th>${d}<br><span style="font-size:7.5px; font-weight:normal; display:block; line-height:1;">${dayName}</span></th>`;
+        }
+        headHtml += `<th>DUTY DAYS</th><th>OFF DAYS</th><th>TOTAL DAYS</th></tr>`;
+        document.getElementById(headId).innerHTML = headHtml;
+
+        let bodyHtml = "";
+        staffList.forEach((staffName, sIndex) => {
+            bodyHtml += `<tr><td style="font-weight:bold;">${sIndex + 1}</td><td style="text-align:left; font-weight:bold;">${staffName}</td>`;
+            
+            let dutyDaysCount = 0;
+            let offDaysCount = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                let cellKey = `${sIndex}_${d}`;
+                let val = rosterData[cellKey] || "";
+                
+                let cssClass = "";
+                let upperVal = val.toUpperCase().trim();
+                
+                if (upperVal === "GH") {
+                    cssClass = "shift-gh";
+                    dutyDaysCount++;
+                } else if (upperVal === "OFF") {
+                    cssClass = "shift-off";
+                    offDaysCount++;
+                } else if (upperVal.includes("+")) {
+                    cssClass = "shift-double";
+                    dutyDaysCount += 2;
+                } else if (upperVal !== "") {
+                    dutyDaysCount++;
+                }
+
+                let isDisabled = appData.isLocked && !appData.isAdmin;
+
+                bodyHtml += `<td class="${cssClass}" id="cell_${deptType}_${sIndex}_${d}">
+                    <input type="text" class="shift-input" value="${val}" 
+                    oninput="handleShiftInput('${deptType}', ${sIndex}, ${d}, this)" 
+                    ${isDisabled ? 'disabled' : ''}>
+                </td>`;
+            }
+            bodyHtml += `<td style="font-weight:bold;" id="duty_${deptType}_${sIndex}">${dutyDaysCount}</td>`;
+            bodyHtml += `<td style="font-weight:bold;" id="off_${deptType}_${sIndex}">${offDaysCount}</td>`;
+            bodyHtml += `<td style="font-weight:bold; background:#f8fafc;">${daysInMonth}</td>`;
+            bodyHtml += `</tr>`;
+        });
+        document.getElementById(bodyId).innerHTML = bodyHtml;
+    }
+
+    function handleShiftInput(deptType, sIndex, day, inputElement) {
+        if (appData.isLocked && !appData.isAdmin) {
+            alert("Roster is locked!");
+            return;
+        }
+        let val = inputElement.value;
+        let h = appData.hospitals[appData.currentHospital];
+        let cellKey = `${sIndex}_${day}`;
+        
+        if (deptType === 'OPD') {
+            if(!h.opdRoster) h.opdRoster = {};
+            h.opdRoster[cellKey] = val;
+        } else {
+            if(!h.ipdRoster) h.ipdRoster = {};
+            h.ipdRoster[cellKey] = val;
+        }
+
+        let cellTd = document.getElementById(`cell_${deptType}_${sIndex}_${day}`);
+        cellTd.className = "";
+        let upperVal = val.toUpperCase().trim();
+        if (upperVal === "GH") cellTd.className = "shift-gh";
+        else if (upperVal === "OFF") cellTd.className = "shift-off";
+        else if (upperVal.includes("+")) cellTd.className = "shift-double";
+
+        let daysInMonth = 30;
+        let dutyDaysCount = 0;
+        let offDaysCount = 0;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            let k = `${sIndex}_${d}`;
+            let v = (deptType === 'OPD' ? h.opdRoster[k] : h.ipdRoster[k]) || "";
+            let uv = v.toUpperCase().trim();
+            
+            if (uv === "OFF") {
+                offDaysCount++;
+            } else if (uv.includes("+")) {
+                dutyDaysCount += 2;
+            } else if (uv === "GH" || (uv !== "")) {
+                dutyDaysCount += 1;
+            }
+        }
+
+        document.getElementById(`duty_${deptType}_${sIndex}`).textContent = dutyDaysCount;
+        document.getElementById(`off_${deptType}_${sIndex}`).textContent = offDaysCount;
+
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveDataToCloud(false);
+        }, 800);
+    }
+
+    async function toggleLock() {
+        if (appData.isLocked) {
+            let pass = prompt("Enter Hospital Password or Master Admin Password to unlock roster:");
+            let h = appData.hospitals[appData.currentHospital];
+            if (pass === masterAdminPassword || pass === h.password) {
+                appData.isLocked = false;
+                appData.isAdmin = true;
+                if (pass === masterAdminPassword) {
+                    appData.isMasterAdmin = true;
+                } else {
+                    appData.isMasterAdmin = false;
+                }
+                alert("Roster unlocked for editing!");
+            } else {
+                alert("Incorrect Password!");
+                return;
+            }
+        } else {
+            appData.isLocked = true;
+            appData.isAdmin = false;
+            appData.isMasterAdmin = false;
+            alert("Roster locked successfully.");
+        }
+        updateLockStatusDisplay();
+        renderAll();
+        saveDataToCloud(true);
+    }
+
+    function manualSaveData() {
+        saveDataToCloud(true);
+    }
+
+    function saveDataToCloud(showNotice = true) {
+        localStorage.setItem('hospital_roster_cloud_v37', JSON.stringify(appData));
+        
+        if (db) {
+            isRemoteUpdate = true;
+            db.ref('hospital_duty_roster_cloud_data').set(appData)
+              .then(() => {
+                  isRemoteUpdate = false;
+                  if (showNotice) {
+                      alert("✅ Aapka data save ho gaya hai!");
+                  }
+              })
+              .catch((error) => {
+                  isRemoteUpdate = false;
+                  if (showNotice) {
+                      alert("⚠️ Saved locally, but cloud sync failed: " + error.message);
+                  }
+              });
+        } else {
+            if (showNotice) {
+                alert("✅ Aapka data save ho gaya hai!");
+            }
+        }
+    }
+
+    function exportExcel() {
+        let wb = XLSX.utils.book_new();
+        let opdTable = document.getElementById("opdTable");
+        let ipdTable = document.getElementById("ipdTable");
+        let wsOPD = XLSX.utils.table_to_sheet(opdTable);
+        let wsIPD = XLSX.utils.table_to_sheet(ipdTable);
+        XLSX.utils.book_append_sheet(wb, wsOPD, "OPD Department");
+        XLSX.utils.book_append_sheet(wb, wsIPD, "IPD Department");
+        XLSX.writeFile(wb, `${appData.currentHospital}_Duty_Roster.xlsx`);
+    }
+
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('l', 'mm', 'a4');
+        
+        doc.setFontSize(12);
+        doc.text(appData.currentHospital, 14, 8);
+        doc.setFontSize(9);
+        doc.text(`MONTH: ${document.getElementById('monthSelect').value.toUpperCase()} ${document.getElementById('yearSelect').value}`, 14, 13);
+        
+        function getTableDataWithInputs(deptType) {
+            let h = appData.hospitals[appData.currentHospital];
+            let staffList = deptType === 'OPD' ? (h.opdStaff || []) : (h.ipdStaff || []);
+            let rosterData = deptType === 'OPD' ? (h.opdRoster || {}) : (h.ipdRoster || {});
+            let daysInMonth = 30;
+            let daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            let headRow = ["NO.", "EMPLOYEE NAME"];
+            for (let d = 1; d <= daysInMonth; d++) {
+                headRow.push(`${d}\n${daysOfWeek[(d - 1) % 7]}`);
+            }
+            headRow.push("DUTY DAYS", "OFF DAYS", "TOTAL DAYS");
+
+            let bodyRows = [];
+            staffList.forEach((staffName, sIndex) => {
+                let row = [sIndex + 1, staffName];
+                let dutyCount = 0;
+                let offCount = 0;
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    let cellKey = `${sIndex}_${d}`;
+                    let val = rosterData[cellKey] || "";
+                    row.push(val);
+
+                    let uv = val.toUpperCase().trim();
+                    if (uv === "OFF") offCount++;
+                    else if (uv.includes("+")) dutyCount += 2;
+                    else if (uv === "GH" || uv !== "") dutyCount += 1;
+                }
+                row.push(dutyCount, offCount, daysInMonth);
+                bodyRows.push(row);
+            });
+
+            return { head: [headRow], body: bodyRows };
+        }
+
+        let opd = getTableDataWithInputs('OPD');
+        let ipd = getTableDataWithInputs('IPD');
+
+        let tableOptions = {
+            theme: 'grid',
+            styles: { fontSize: 4.5, cellPadding: 0.4, halign: 'center', valign: 'middle', lineWidth: 0.1, lineColor: [0, 0, 0] },
+            headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 4.5, fontStyle: 'bold' }
+        };
+
+        doc.setFontSize(9);
+        doc.text("1. OPD REGISTRATION DEPARTMENT", 14, 17);
+        doc.autoTable(Object.assign({}, tableOptions, { startY: 19, head: opd.head, body: opd.body }));
+
+        let nextY = doc.lastAutoTable.finalY + 5;
+        doc.text("2. IPD REGISTRATION DEPARTMENT", 14, nextY);
+        doc.autoTable(Object.assign({}, tableOptions, { startY: nextY + 2, head: ipd.head, body: ipd.body }));
+        
+        let finalY = doc.lastAutoTable.finalY + 5;
+        doc.setFontSize(6);
+        doc.text("IMPORTANT NOTICE: Duty Time & Punctuality must be maintained. IPD Duty Timings: Morning (06 AM - 02 PM), Evening (02 PM - 10 PM), Night (10 PM - 06 AM).", 14, finalY);
+
+        doc.save(`${appData.currentHospital}_Roster.pdf`);
+    }
+
+    function printSheet() { window.print(); }
+
+    function shareWhatsApp() {
+        let text = encodeURIComponent(`Duty Roster Report for ${appData.currentHospital} - Month: ${document.getElementById('monthSelect').value}`);
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    }
+
+    function backupJSON() {
+        let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+        let downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${appData.currentHospital}_backup.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function resetHospital() {
+        if (appData.isLocked && !appData.isAdmin) {
+            alert("Roster is locked! Unlock first.");
+            return;
+        }
+        if (confirm("Reset current hospital roster shift entries?")) {
+            let h = appData.hospitals[appData.currentHospital];
+            h.opdRoster = {};
+            h.ipdRoster = {};
+            renderAll();
+            saveDataToCloud(true);
+        }
+    }
 </script>
+
 </body>
 </html>
