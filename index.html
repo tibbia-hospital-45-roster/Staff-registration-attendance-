@@ -451,12 +451,10 @@
       <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
       <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
       
-      <!-- 💾 SAVE DATA BUTTON ALWAYS VISIBLE -->
-      <button class="btn-save" onclick="safeExecute(manualSave)">💾 Save Data</button>
-
       <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
       <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️ Admin Master Vault</button>
 
+      <button class="btn-save admin-only-elem" onclick="safeExecute(manualSave)">💾 Save Data</button>
       <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
       <button class="btn-reset admin-only-elem" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
     </div>
@@ -628,7 +626,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v32";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v33";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -1240,7 +1238,7 @@ function deleteSelectedIpdEmployee() {
 }
 
 // ==============================================================
-// 8. SYNC & STORAGE (WITH AUTO-MERGE FOR HOSPITALS)
+// 8. SYNC, STORAGE & EXPORT FUNCTIONS (FIXED DIRECT DOWNLOAD/SHARE)
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1579,6 +1577,76 @@ function modifyStaffName(dept, idx, newName) {
   });
   populateDepartmentDeleteDropdowns();
   markUnsavedAndDebounce();
+}
+
+// 📄 Direct PDF Download Fix
+function downloadPdfDirect() {
+  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
+  showToast("⏳ PDF तैयार हो रही है...");
+  const element = document.getElementById('printArea');
+  const opt = {
+    margin: [2, 2, 2, 2],
+    filename: `Duty_Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.pdf`,
+    image: { type: 'jpeg', quality: 1.0 },
+    html2canvas: { scale: 3.5, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true }
+  };
+  html2pdf().set(opt).from(element).save().then(() => showToast("✅ PDF डाउनलोड हो गई!")).catch(() => showToast("❌ PDF डाउनलोड विफल!"));
+}
+
+// 📲 WhatsApp Share Fix
+function shareToWhatsApp() {
+  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
+  const currentHospital = getActiveHospitalData();
+  let text = `*🏥 ${currentHospital.hospitalTitle}*\n*📋 ROSTER - ${MONTH_NAMES[currentMonth]} ${currentYear}*\n\nडिपार्टमेंट: OPD & IPD Registration`;
+  if (navigator.share) {
+    navigator.share({ title: 'Duty Roster', text: text }).catch(() => {});
+  } else {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  }
+}
+
+// 📊 Excel Export Fix
+function exportDutyRosterToExcel() {
+  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
+  const currentHospital = getActiveHospitalData();
+  const numDays = getDaysInMonth(currentYear, currentMonth);
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = currentHospital.monthlyDuties[mKey] || { opd: {}, ipd: {} };
+
+  const wb = XLSX.utils.book_new();
+  const data = [[currentHospital.hospitalTitle], [`MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`], []];
+
+  function addExcelSec(title, deptKey, list) {
+    data.push([title]);
+    const r1 = ["#", "STAFF NAME"];
+    for (let d = 1; d <= numDays; d++) r1.push(d);
+    r1.push("TOTAL DUTY", "TOTAL OFF");
+    data.push(r1);
+
+    (list || []).forEach((sName, i) => {
+      const row = [i + 1, sName];
+      const dArr = (mData[deptKey] && mData[deptKey][sName]) ? mData[deptKey][sName] : [];
+      let dCount = 0, offCount = 0;
+      for (let d = 0; d < numDays; d++) {
+        const val = dArr[d] || "";
+        row.push(val);
+        const res = parseDutyCode(val);
+        dCount += res.duty; offCount += res.off;
+      }
+      row.push(dCount, offCount);
+      data.push(row);
+    });
+    data.push([]);
+  }
+
+  addExcelSec("1. OPD", "opd", currentHospital.staffDirectory.opd);
+  addExcelSec("2. IPD", "ipd", currentHospital.staffDirectory.ipd);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, "Roster");
+  XLSX.writeFile(wb, `Roster_${MONTH_NAMES[currentMonth]}_${currentYear}.xlsx`);
+  showToast("📊 एक्सेल डाउनलोड हो गई!");
 }
 
 window.onload = () => {
