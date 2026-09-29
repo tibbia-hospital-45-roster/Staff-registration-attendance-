@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -451,10 +452,12 @@
       <button class="btn-whatsapp" onclick="safeExecute(shareToWhatsApp)">📲 WhatsApp Share</button>
       <button class="btn-excel" onclick="safeExecute(exportDutyRosterToExcel)">📊 Export to Excel (.xlsx)</button>
       
-      <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
-      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️ Admin Master Vault</button>
+      <!-- 💾 SAVE DATA BUTTON ALWAYS VISIBLE -->
+      <button class="btn-save" onclick="safeExecute(manualSave)">💾 Save Data</button>
 
-      <button class="btn-save admin-only-elem" onclick="safeExecute(manualSave)">💾 Save Data</button>
+      <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
+      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️️ Admin Master Vault</button>
+
       <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
       <button class="btn-reset admin-only-elem" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
     </div>
@@ -626,7 +629,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v33";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v36";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -650,10 +653,6 @@ function createBlankHospitalRoster(title, customHash, encVault) {
       verifiedBy: "",
       incharge: ""
     },
-    staffDirectory: {
-      opd: [],
-      ipd: []
-    },
     monthlyDuties: {}
   };
 }
@@ -664,10 +663,6 @@ const BASE_DEFAULT_HOSPITALS = {
     adminHash: "ea7357ffa1ca26bbd351aeefd3e79cbc7c48b7cc223c35ed50ab28fe4984e3e9", // OPD@IPD45
     encVaultToken: encryptToken("OPD@IPD45", "Rinku_OPD_8383"),
     signatures: { preparedBy: "RINKU", verifiedBy: "SUSHIL", incharge: "CHANDRA BHAN SIR" },
-    staffDirectory: {
-      opd: ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"],
-      ipd: ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"]
-    },
     monthlyDuties: {}
   },
   "deepchand_bandhan": {
@@ -675,7 +670,6 @@ const BASE_DEFAULT_HOSPITALS = {
     adminHash: "d43236e76cf01844b2f65a12eb760773d32ef4f1a233b2a26569ec264ecfb25a", // Dcbh
     encVaultToken: encryptToken("Dcbh", "Rinku_OPD_8383"),
     signatures: { preparedBy: "", verifiedBy: "", incharge: "" },
-    staffDirectory: { opd: [], ipd: [] },
     monthlyDuties: {}
   },
   "nc_joshi": {
@@ -683,7 +677,6 @@ const BASE_DEFAULT_HOSPITALS = {
     adminHash: "3f510808b07e77b63f6a27e7d177bf273c357d603a11f2a1b91811e5f8f36c5b", // Rahul@1988
     encVaultToken: encryptToken("Rahul@1988", "Rinku_OPD_8383"),
     signatures: { preparedBy: "", verifiedBy: "", incharge: "" },
-    staffDirectory: { opd: [], ipd: [] },
     monthlyDuties: {}
   },
   "bhagwan_mahaveer": {
@@ -691,7 +684,6 @@ const BASE_DEFAULT_HOSPITALS = {
     adminHash: "228cb611b8b801f4c7f1a3f6521bc3b398df00412401f8f906f3e18a93901b00", // Bmh
     encVaultToken: encryptToken("Bmh", "Rinku_OPD_8383"),
     signatures: { preparedBy: "", verifiedBy: "", incharge: "" },
-    staffDirectory: { opd: [], ipd: [] },
     monthlyDuties: {}
   },
   "ambedkar_hospital": {
@@ -699,7 +691,6 @@ const BASE_DEFAULT_HOSPITALS = {
     adminHash: "75395a126d40523bc784f4df331002aa996078347a46f2aa453e02029bfb6a93", // Ahdp
     encVaultToken: encryptToken("Ahdp", "Rinku_OPD_8383"),
     signatures: { preparedBy: "", verifiedBy: "", incharge: "" },
-    staffDirectory: { opd: [], ipd: [] },
     monthlyDuties: {}
   }
 };
@@ -719,11 +710,7 @@ function getActiveHospitalData() {
     const keys = Object.keys(multiHospitalMaster.hospitals);
     multiHospitalMaster.activeHospitalId = keys.length > 0 ? keys[0] : "tibbia_karol_bagh";
   }
-  const cur = multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
-  if (!cur.staffDirectory) cur.staffDirectory = { opd: [], ipd: [] };
-  if (!Array.isArray(cur.staffDirectory.opd)) cur.staffDirectory.opd = [];
-  if (!Array.isArray(cur.staffDirectory.ipd)) cur.staffDirectory.ipd = [];
-  return cur;
+  return multiHospitalMaster.hospitals[multiHospitalMaster.activeHospitalId];
 }
 
 function getMonthKey(year, month) { return `${year}-${month}`; }
@@ -733,16 +720,32 @@ function ensureMonthData(year, month) {
   const mKey = getMonthKey(year, month);
   if (!currentHospital.monthlyDuties) currentHospital.monthlyDuties = {};
   if (!currentHospital.monthlyDuties[mKey]) {
-    currentHospital.monthlyDuties[mKey] = { opd: {}, ipd: {} };
+    // Unique default staff per hospital per month
+    let defaultOpd = ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"];
+    let defaultIpd = ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"];
+    if (multiHospitalMaster.activeHospitalId !== "tibbia_karol_bagh") {
+      defaultOpd = [];
+      defaultIpd = [];
+    }
+    currentHospital.monthlyDuties[mKey] = { 
+      opdStaff: defaultOpd, 
+      ipdStaff: defaultIpd, 
+      opd: {}, 
+      ipd: {} 
+    };
   }
+  
+  const mData = currentHospital.monthlyDuties[mKey];
+  if (!Array.isArray(mData.opdStaff)) mData.opdStaff = [];
+  if (!Array.isArray(mData.ipdStaff)) mData.ipdStaff = [];
+  if (!mData.opd) mData.opd = {};
+  if (!mData.ipd) mData.ipd = {};
 
-  ['opd', 'ipd'].forEach(dept => {
-    if (!currentHospital.monthlyDuties[mKey][dept]) currentHospital.monthlyDuties[mKey][dept] = {};
-    (currentHospital.staffDirectory[dept] || []).forEach(empName => {
-      if (!currentHospital.monthlyDuties[mKey][dept][empName]) {
-        currentHospital.monthlyDuties[mKey][dept][empName] = Array(31).fill("");
-      }
-    });
+  mData.opdStaff.forEach(empName => {
+    if (!mData.opd[empName]) mData.opd[empName] = Array(31).fill("");
+  });
+  mData.ipdStaff.forEach(empName => {
+    if (!mData.ipd[empName]) mData.ipd[empName] = Array(31).fill("");
   });
 }
 
@@ -1119,21 +1122,24 @@ async function promptAddNewHospital() {
 }
 
 // ==============================================================
-// 7. DEPARTMENT STAFF (OPD & IPD) ADD / DELETE FUNCTIONS (FULLY ISOLATED & ROBUST)
+// 7. MONTH-WISE DEPARTMENT STAFF (OPD & IPD) ADD / DELETE (ISOLATED)
 // ==============================================================
 function addOpdEmployee() {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
   const input = document.getElementById("inputOpdName");
   if (!input) return;
   const name = input.value.trim().toUpperCase();
-  const currentHospital = getActiveHospitalData();
-
   if (!name) { alert("कृपया OPD कर्मचारी का नाम लिखें!"); return; }
-  if (!currentHospital.staffDirectory) currentHospital.staffDirectory = { opd: [], ipd: [] };
-  if (!Array.isArray(currentHospital.staffDirectory.opd)) currentHospital.staffDirectory.opd = [];
 
-  currentHospital.staffDirectory.opd.push(name);
   ensureMonthData(currentYear, currentMonth);
+  const curHosp = getActiveHospitalData();
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = curHosp.monthlyDuties[mKey];
+
+  if (!Array.isArray(mData.opdStaff)) mData.opdStaff = [];
+  mData.opdStaff.push(name);
+  if (!mData.opd[name]) mData.opd[name] = Array(31).fill("");
+
   input.value = "";
   renderRosterView();
   markUnsavedAndDebounce();
@@ -1145,14 +1151,17 @@ function addIpdEmployee() {
   const input = document.getElementById("inputIpdName");
   if (!input) return;
   const name = input.value.trim().toUpperCase();
-  const currentHospital = getActiveHospitalData();
-
   if (!name) { alert("कृपया IPD कर्मचारी का नाम लिखें!"); return; }
-  if (!currentHospital.staffDirectory) currentHospital.staffDirectory = { opd: [], ipd: [] };
-  if (!Array.isArray(currentHospital.staffDirectory.ipd)) currentHospital.staffDirectory.ipd = [];
 
-  currentHospital.staffDirectory.ipd.push(name);
   ensureMonthData(currentYear, currentMonth);
+  const curHosp = getActiveHospitalData();
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = curHosp.monthlyDuties[mKey];
+
+  if (!Array.isArray(mData.ipdStaff)) mData.ipdStaff = [];
+  mData.ipdStaff.push(name);
+  if (!mData.ipd[name]) mData.ipd[name] = Array(31).fill("");
+
   input.value = "";
   renderRosterView();
   markUnsavedAndDebounce();
@@ -1160,12 +1169,15 @@ function addIpdEmployee() {
 }
 
 function populateDepartmentDeleteDropdowns() {
-  const currentHospital = getActiveHospitalData();
-  
+  ensureMonthData(currentYear, currentMonth);
+  const curHosp = getActiveHospitalData();
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = curHosp.monthlyDuties[mKey];
+
   const opdSel = document.getElementById("deleteOpdSelect");
   if (opdSel) {
     opdSel.innerHTML = "";
-    (currentHospital.staffDirectory.opd || []).forEach((sName, i) => {
+    (mData.opdStaff || []).forEach((sName, i) => {
       const opt = document.createElement("option");
       opt.value = i; opt.text = `${i + 1}. ${sName}`;
       opdSel.appendChild(opt);
@@ -1175,7 +1187,7 @@ function populateDepartmentDeleteDropdowns() {
   const ipdSel = document.getElementById("deleteIpdSelect");
   if (ipdSel) {
     ipdSel.innerHTML = "";
-    (currentHospital.staffDirectory.ipd || []).forEach((sName, i) => {
+    (mData.ipdStaff || []).forEach((sName, i) => {
       const opt = document.createElement("option");
       opt.value = i; opt.text = `${i + 1}. ${sName}`;
       ipdSel.appendChild(opt);
@@ -1188,25 +1200,25 @@ function deleteSelectedOpdEmployee() {
   const sel = document.getElementById("deleteOpdSelect");
   if (!sel) return;
   const idx = parseInt(sel.value);
-  const currentHospital = getActiveHospitalData();
+  
+  ensureMonthData(currentYear, currentMonth);
+  const curHosp = getActiveHospitalData();
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = curHosp.monthlyDuties[mKey];
 
-  if (isNaN(idx) || !currentHospital.staffDirectory.opd[idx]) {
+  if (isNaN(idx) || !mData.opdStaff[idx]) {
     alert("हटाने के लिए कोई OPD कर्मचारी नहीं चुना गया है!");
     return;
   }
-  const empName = currentHospital.staffDirectory.opd[idx];
+  const empName = mData.opdStaff[idx];
 
-  if (confirm(`क्या आप OPD से "${empName}" को हटाना चाहते हैं?`)) {
-    currentHospital.staffDirectory.opd.splice(idx, 1);
-    
-    const mKey = getMonthKey(currentYear, currentMonth);
-    if (currentHospital.monthlyDuties && currentHospital.monthlyDuties[mKey] && currentHospital.monthlyDuties[mKey].opd) {
-      delete currentHospital.monthlyDuties[mKey].opd[empName];
-    }
+  if (confirm(`क्या आप इस महीने की OPD से "${empName}" को हटाना चाहते हैं?`)) {
+    mData.opdStaff.splice(idx, 1);
+    if (mData.opd) delete mData.opd[empName];
 
     renderRosterView();
     markUnsavedAndDebounce();
-    showToast(`🗑️ ${empName} OPD से हटा दिया गया!`);
+    showToast(`🗑️ ${empName} इस महीने की OPD से हटा दिया गया!`);
   }
 }
 
@@ -1215,30 +1227,30 @@ function deleteSelectedIpdEmployee() {
   const sel = document.getElementById("deleteIpdSelect");
   if (!sel) return;
   const idx = parseInt(sel.value);
-  const currentHospital = getActiveHospitalData();
+  
+  ensureMonthData(currentYear, currentMonth);
+  const curHosp = getActiveHospitalData();
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = curHosp.monthlyDuties[mKey];
 
-  if (isNaN(idx) || !currentHospital.staffDirectory.ipd[idx]) {
+  if (isNaN(idx) || !mData.ipdStaff[idx]) {
     alert("हटाने के लिए कोई IPD कर्मचारी नहीं चुना गया है!");
     return;
   }
-  const empName = currentHospital.staffDirectory.ipd[idx];
+  const empName = mData.ipdStaff[idx];
 
-  if (confirm(`क्या आप IPD से "${empName}" को हटाना चाहते हैं?`)) {
-    currentHospital.staffDirectory.ipd.splice(idx, 1);
-    
-    const mKey = getMonthKey(currentYear, currentMonth);
-    if (currentHospital.monthlyDuties && currentHospital.monthlyDuties[mKey] && currentHospital.monthlyDuties[mKey].ipd) {
-      delete currentHospital.monthlyDuties[mKey].ipd[empName];
-    }
+  if (confirm(`क्या आप इस महीने की IPD से "${empName}" को हटाना चाहते हैं?`)) {
+    mData.ipdStaff.splice(idx, 1);
+    if (mData.ipd) delete mData.ipd[empName];
 
     renderRosterView();
     markUnsavedAndDebounce();
-    showToast(`🗑️ ${empName} IPD से हटा दिया गया!`);
+    showToast(`🗑️ ${empName} इस महीने की IPD से हटा दिया गया!`);
   }
 }
 
 // ==============================================================
-// 8. SYNC, STORAGE & EXPORT FUNCTIONS (FIXED DIRECT DOWNLOAD/SHARE)
+// 8. SYNC & STORAGE
 // ==============================================================
 function initRealtimeSync() {
   const dot = document.getElementById("syncStatusDot");
@@ -1259,12 +1271,6 @@ function initRealtimeSync() {
       Object.keys(BASE_DEFAULT_HOSPITALS).forEach(hKey => {
         if (!cloudData.hospitals[hKey]) {
           cloudData.hospitals[hKey] = JSON.parse(JSON.stringify(BASE_DEFAULT_HOSPITALS[hKey]));
-        } else {
-          if (!cloudData.hospitals[hKey].staffDirectory) {
-            cloudData.hospitals[hKey].staffDirectory = { opd: [], ipd: [] };
-          }
-          if (!Array.isArray(cloudData.hospitals[hKey].staffDirectory.opd)) cloudData.hospitals[hKey].staffDirectory.opd = [];
-          if (!Array.isArray(cloudData.hospitals[hKey].staffDirectory.ipd)) cloudData.hospitals[hKey].staffDirectory.ipd = [];
         }
       });
       multiHospitalMaster = cloudData;
@@ -1297,12 +1303,6 @@ function loadSavedDatabase() {
         Object.keys(BASE_DEFAULT_HOSPITALS).forEach(hKey => {
           if (!parsed.hospitals[hKey]) {
             parsed.hospitals[hKey] = JSON.parse(JSON.stringify(BASE_DEFAULT_HOSPITALS[hKey]));
-          } else {
-            if (!parsed.hospitals[hKey].staffDirectory) {
-              parsed.hospitals[hKey].staffDirectory = { opd: [], ipd: [] };
-            }
-            if (!Array.isArray(parsed.hospitals[hKey].staffDirectory.opd)) parsed.hospitals[hKey].staffDirectory.opd = [];
-            if (!Array.isArray(parsed.hospitals[hKey].staffDirectory.ipd)) parsed.hospitals[hKey].staffDirectory.ipd = [];
           }
         });
         multiHospitalMaster = parsed;
@@ -1349,7 +1349,7 @@ async function deleteCurrentHospital() {
       firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster);
     }
     refreshHospitalUI();
-    alert("🗑️ अस्पताल हटा दिया गया!");
+    alert("🗑 अस्पताल हटा दिया गया!");
   }
 }
 
@@ -1493,20 +1493,21 @@ function buildTable(numDays) {
   const tbody = document.getElementById("tableBody");
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
-  const currentMonthData = currentHospital.monthlyDuties[mKey] || { opd: {}, ipd: {} };
+  ensureMonthData(currentYear, currentMonth);
+  const mData = currentHospital.monthlyDuties[mKey];
 
   let html = `<tr><td colspan="${numDays + 5}" class="dept-banner opd-banner">1. OPD REGISTRATION DEPARTMENT</td></tr>`;
   html += generateHeaderRowHtml(numDays);
-  (currentHospital.staffDirectory.opd || []).forEach((staffName, idx) => {
-    const dutiesArr = (currentMonthData.opd && currentMonthData.opd[staffName]) ? currentMonthData.opd[staffName] : Array(31).fill("");
+  (mData.opdStaff || []).forEach((staffName, idx) => {
+    const dutiesArr = mData.opd[staffName] || Array(31).fill("");
     html += buildStaffRow("opd", idx, staffName, dutiesArr, numDays);
   });
 
   html += `<tr><td colspan="${numDays + 5}" style="height:6px; background:#f1f5f9;"></td></tr>`;
   html += `<tr><td colspan="${numDays + 5}" class="dept-banner ipd-banner">2. IPD REGISTRATION DEPARTMENT</td></tr>`;
   html += generateHeaderRowHtml(numDays);
-  (currentHospital.staffDirectory.ipd || []).forEach((staffName, idx) => {
-    const dutiesArr = (currentMonthData.ipd && currentMonthData.ipd[staffName]) ? currentMonthData.ipd[staffName] : Array(31).fill("");
+  (mData.ipdStaff || []).forEach((staffName, idx) => {
+    const dutiesArr = mData.ipd[staffName] || Array(31).fill("");
     html += buildStaffRow("ipd", idx, staffName, dutiesArr, numDays);
   });
 
@@ -1531,8 +1532,11 @@ function onDutyInput(elem, dept, staffName, dayIdx) {
   const upperVal = elem.value.toUpperCase();
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
-  if (!currentHospital.monthlyDuties[mKey][dept][staffName]) currentHospital.monthlyDuties[mKey][dept][staffName] = Array(31).fill("");
-  currentHospital.monthlyDuties[mKey][dept][staffName][dayIdx] = upperVal;
+  const mData = currentHospital.monthlyDuties[mKey];
+  const deptObj = dept === 'opd' ? mData.opd : mData.ipd;
+
+  if (!deptObj[staffName]) deptObj[staffName] = Array(31).fill("");
+  deptObj[staffName][dayIdx] = upperVal;
   
   elem.parentElement.className = parseDutyCode(upperVal).cls;
   recomputeTotals();
@@ -1543,11 +1547,14 @@ function recomputeTotals(numDays) {
   if (!numDays) numDays = getDaysInMonth(currentYear, currentMonth);
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
-  const monthData = currentHospital.monthlyDuties[mKey];
+  const mData = currentHospital.monthlyDuties[mKey] || {};
 
   ["opd", "ipd"].forEach(dept => {
-    (currentHospital.staffDirectory[dept] || []).forEach((staffName, idx) => {
-      const dutiesArr = (monthData && monthData[dept] && monthData[dept][staffName]) ? monthData[dept][staffName] : [];
+    const staffList = dept === 'opd' ? mData.opdStaff : mData.ipdStaff;
+    const deptObj = dept === 'opd' ? mData.opd : mData.ipd;
+
+    (staffList || []).forEach((staffName, idx) => {
+      const dutiesArr = (deptObj && deptObj[staffName]) ? deptObj[staffName] : [];
       let totalDuty = 0, totalOff = 0;
       for (let d = 0; d < numDays; d++) {
         const res = parseDutyCode(dutiesArr[d] || "");
@@ -1564,22 +1571,29 @@ function recomputeTotals(numDays) {
 function modifyStaffName(dept, idx, newName) {
   if (!isUnlocked) return;
   const currentHospital = getActiveHospitalData();
-  const oldName = currentHospital.staffDirectory[dept][idx];
+  const mKey = getMonthKey(currentYear, currentMonth);
+  const mData = currentHospital.monthlyDuties[mKey];
+  
+  const staffList = dept === 'opd' ? mData.opdStaff : mData.ipdStaff;
+  const deptObj = dept === 'opd' ? mData.opd : mData.ipd;
+
+  const oldName = staffList[idx];
   const cleaned = newName.trim().toUpperCase();
   if (!cleaned || cleaned === oldName) return;
-  currentHospital.staffDirectory[dept][idx] = cleaned;
 
-  Object.keys(currentHospital.monthlyDuties).forEach(mKey => {
-    if (currentHospital.monthlyDuties[mKey][dept] && currentHospital.monthlyDuties[mKey][dept][oldName]) {
-      currentHospital.monthlyDuties[mKey][dept][cleaned] = currentHospital.monthlyDuties[mKey][dept][oldName];
-      delete currentHospital.monthlyDuties[mKey][dept][oldName];
-    }
-  });
+  staffList[idx] = cleaned;
+  if (deptObj[oldName]) {
+    deptObj[cleaned] = deptObj[oldName];
+    delete deptObj[oldName];
+  } else {
+    deptObj[cleaned] = Array(31).fill("");
+  }
+
   populateDepartmentDeleteDropdowns();
   markUnsavedAndDebounce();
 }
 
-// 📄 Direct PDF Download Fix
+// 📄 Direct PDF Download
 function downloadPdfDirect() {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
   showToast("⏳ PDF तैयार हो रही है...");
@@ -1594,7 +1608,7 @@ function downloadPdfDirect() {
   html2pdf().set(opt).from(element).save().then(() => showToast("✅ PDF डाउनलोड हो गई!")).catch(() => showToast("❌ PDF डाउनलोड विफल!"));
 }
 
-// 📲 WhatsApp Share Fix
+// 📲 WhatsApp Share
 function shareToWhatsApp() {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
   const currentHospital = getActiveHospitalData();
@@ -1606,27 +1620,27 @@ function shareToWhatsApp() {
   }
 }
 
-// 📊 Excel Export Fix
+// 📊 Excel Export
 function exportDutyRosterToExcel() {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
   const currentHospital = getActiveHospitalData();
   const numDays = getDaysInMonth(currentYear, currentMonth);
   const mKey = getMonthKey(currentYear, currentMonth);
-  const mData = currentHospital.monthlyDuties[mKey] || { opd: {}, ipd: {} };
+  const mData = currentHospital.monthlyDuties[mKey] || { opdStaff: [], ipdStaff: [], opd: {}, ipd: {} };
 
   const wb = XLSX.utils.book_new();
   const data = [[currentHospital.hospitalTitle], [`MONTH: ${MONTH_NAMES[currentMonth]} ${currentYear}`], []];
 
-  function addExcelSec(title, deptKey, list) {
+  function addExcelSec(title, staffList, deptObj) {
     data.push([title]);
     const r1 = ["#", "STAFF NAME"];
     for (let d = 1; d <= numDays; d++) r1.push(d);
     r1.push("TOTAL DUTY", "TOTAL OFF");
     data.push(r1);
 
-    (list || []).forEach((sName, i) => {
+    (staffList || []).forEach((sName, i) => {
       const row = [i + 1, sName];
-      const dArr = (mData[deptKey] && mData[deptKey][sName]) ? mData[deptKey][sName] : [];
+      const dArr = (deptObj && deptObj[sName]) ? deptObj[sName] : [];
       let dCount = 0, offCount = 0;
       for (let d = 0; d < numDays; d++) {
         const val = dArr[d] || "";
@@ -1640,8 +1654,8 @@ function exportDutyRosterToExcel() {
     data.push([]);
   }
 
-  addExcelSec("1. OPD", "opd", currentHospital.staffDirectory.opd);
-  addExcelSec("2. IPD", "ipd", currentHospital.staffDirectory.ipd);
+  addExcelSec("1. OPD", mData.opdStaff, mData.opd);
+  addExcelSec("2. IPD", mData.ipdStaff, mData.ipd);
 
   const ws = XLSX.utils.aoa_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, "Roster");
