@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -456,7 +455,7 @@
       <button class="btn-save" onclick="safeExecute(manualSave)">💾 Save Data</button>
 
       <button class="btn-admin" id="btnAdminToggle" onclick="triggerLoginOrUnlock()">🔐 Unlock Roster</button>
-      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡️️ Admin Master Vault</button>
+      <button class="btn-super-admin super-admin-only" onclick="openPasswordVault()">🛡 Admin Master Vault</button>
 
       <button class="btn-backup admin-only-elem" onclick="safeExecute(downloadJsonBackup)">💾 Backup (.json)</button>
       <button class="btn-reset admin-only-elem" onclick="safeExecute(resetCurrentHospitalRoster)">🔄 Reset Hospital</button>
@@ -629,7 +628,7 @@ try {
   console.warn("Firebase Init fallback:", e);
 }
 
-const STORAGE_KEY = "hospital_multicenter_roster_clean_v36";
+const STORAGE_KEY = "hospital_multicenter_roster_clean_v38";
 
 const MONTH_NAMES = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const DAYS_OF_WEEK = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -638,6 +637,7 @@ const now = new Date();
 let currentYear = now.getFullYear();
 let currentMonth = now.getMonth();
 let hasUnsavedChanges = false;
+let isLocalEditing = false; // Block incoming cloud sync while typing
 
 let isUnlocked = false;
 let isSuperAdmin = false;
@@ -720,7 +720,6 @@ function ensureMonthData(year, month) {
   const mKey = getMonthKey(year, month);
   if (!currentHospital.monthlyDuties) currentHospital.monthlyDuties = {};
   if (!currentHospital.monthlyDuties[mKey]) {
-    // Unique default staff per hospital per month
     let defaultOpd = ["RINKU", "SUSHIL", "SUNITA", "RAJENDRA", "AMIT"];
     let defaultIpd = ["VISHAL", "DHARMENDER", "SACHIN", "KUNAL"];
     if (multiHospitalMaster.activeHospitalId !== "tibbia_karol_bagh") {
@@ -1122,7 +1121,7 @@ async function promptAddNewHospital() {
 }
 
 // ==============================================================
-// 7. MONTH-WISE DEPARTMENT STAFF (OPD & IPD) ADD / DELETE (ISOLATED)
+// 7. DEPARTMENT STAFF (OPD & IPD) ADD / DELETE
 // ==============================================================
 function addOpdEmployee() {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
@@ -1147,7 +1146,7 @@ function addOpdEmployee() {
 }
 
 function addIpdEmployee() {
-  if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
+  if (!isUnlocked) { alert("⚠️️ पहले रोस्टर अनलॉक करें!"); return; }
   const input = document.getElementById("inputIpdName");
   if (!input) return;
   const name = input.value.trim().toUpperCase();
@@ -1266,6 +1265,7 @@ function initRealtimeSync() {
   }
 
   firebaseDb.ref("multi_hospital_rosters").on("value", (snapshot) => {
+    if (isLocalEditing) return; // Prevent live overwrite while user is interacting
     const cloudData = snapshot.val();
     if (cloudData && cloudData.hospitals && Object.keys(cloudData.hospitals).length > 0) {
       Object.keys(BASE_DEFAULT_HOSPITALS).forEach(hKey => {
@@ -1284,13 +1284,20 @@ function initRealtimeSync() {
 
 function saveDatabase(showAlertPopup = true) {
   if (!isUnlocked) { alert("⚠️ पहले रोस्टर अनलॉक करें!"); return; }
+  isLocalEditing = true;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(multiHospitalMaster));
   hasUnsavedChanges = false;
 
   if (firebaseDb) {
     firebaseDb.ref("multi_hospital_rosters").set(multiHospitalMaster).then(() => {
+      isLocalEditing = false;
       if (showAlertPopup) { alert("✅ डेटा सुरक्षित सेव हो गया!"); showToast("☁️ Synced!"); }
-    }).catch(() => { if (showAlertPopup) alert("✅ लोकल सेव हो गया!"); });
+    }).catch(() => {
+      isLocalEditing = false;
+      if (showAlertPopup) { alert("✅ लोकल सेव हो गया!"); }
+    });
+  } else {
+    isLocalEditing = false;
   }
 }
 
@@ -1314,6 +1321,7 @@ function loadSavedDatabase() {
 function populateHospitalDropdown() {
   const sel = document.getElementById("hospitalSelector");
   if (!sel) return;
+  const currentSelected = sel.value;
   sel.innerHTML = "";
   Object.keys(multiHospitalMaster.hospitals).forEach(hId => {
     const opt = document.createElement("option");
@@ -1322,6 +1330,10 @@ function populateHospitalDropdown() {
     if (hId === multiHospitalMaster.activeHospitalId) opt.selected = true;
     sel.appendChild(opt);
   });
+  if (currentSelected && multiHospitalMaster.hospitals[currentSelected]) {
+    sel.value = currentSelected;
+    multiHospitalMaster.activeHospitalId = currentSelected;
+  }
 }
 
 async function deleteCurrentHospital() {
@@ -1529,6 +1541,7 @@ function buildStaffRow(dept, idx, staffName, dutiesArr, numDays) {
 
 function onDutyInput(elem, dept, staffName, dayIdx) {
   if (!isUnlocked) return;
+  isLocalEditing = true;
   const upperVal = elem.value.toUpperCase();
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
@@ -1541,6 +1554,7 @@ function onDutyInput(elem, dept, staffName, dayIdx) {
   elem.parentElement.className = parseDutyCode(upperVal).cls;
   recomputeTotals();
   markUnsavedAndDebounce();
+  setTimeout(() => { isLocalEditing = false; }, 800);
 }
 
 function recomputeTotals(numDays) {
@@ -1570,6 +1584,7 @@ function recomputeTotals(numDays) {
 
 function modifyStaffName(dept, idx, newName) {
   if (!isUnlocked) return;
+  isLocalEditing = true;
   const currentHospital = getActiveHospitalData();
   const mKey = getMonthKey(currentYear, currentMonth);
   const mData = currentHospital.monthlyDuties[mKey];
@@ -1579,7 +1594,7 @@ function modifyStaffName(dept, idx, newName) {
 
   const oldName = staffList[idx];
   const cleaned = newName.trim().toUpperCase();
-  if (!cleaned || cleaned === oldName) return;
+  if (!cleaned || cleaned === oldName) { isLocalEditing = false; return; }
 
   staffList[idx] = cleaned;
   if (deptObj[oldName]) {
@@ -1591,6 +1606,7 @@ function modifyStaffName(dept, idx, newName) {
 
   populateDepartmentDeleteDropdowns();
   markUnsavedAndDebounce();
+  setTimeout(() => { isLocalEditing = false; }, 800);
 }
 
 // 📄 Direct PDF Download
